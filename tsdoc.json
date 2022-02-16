@@ -1,0 +1,37 @@
+{
+	"tags":
+	{
+		"allowUnknownTags" : true
+	},
+	"plugins":[
+		 "plugins/markdown"
+		,"/Users/rizan/AppData/Roaming/npm/node_modules/tsdoc/template/plugins/TSDoc.js"
+	],
+	"opts":
+	{
+		"template"	:"/Users/rizan/AppData/Roaming/npm/node_modules/tsdoc/template",
+		"recurse"	:"true"
+	},
+	"templates" : {
+		"cleverLinks"     : false,
+		"monospaceLinks"  : false
+	},
+	"source":
+	{
+		"includePattern": "(\\.d)?\\.ts$"
+	},
+	"markdown"  : {
+		"parser"   : "gfm",
+		"hardwrap" : true
+	},
+	"tsdoc":{
+		"source"		:"/dev-defi/zeta/marketmaker/src/",
+		"destination"	:"/dev-defi/zeta/marketmaker/docs",
+		"tutorials"		:"",
+		"systemName"	: "marketmaker",
+		"footer"		: "",
+		"copyright"		: "marketmaker Copyright © 2022 rizan.",
+		"outputSourceFiles" : true,
+		"commentsOnly": true
+	}
+}
