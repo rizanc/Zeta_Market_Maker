@@ -1,0 +1,37 @@
+{
+    "description": "**Default Confguration File",
+    "version": 1.0,
+    "actions": [
+        {
+            "name": "shortPositionsDelta",
+            "description": "Short Position Delta Display",
+            "status":"active",
+            "options": {}
+        },
+        {
+            "name": "fairBidStrategy",
+            "description": "Fair Bid Strategy",
+            "status":"off",
+            "options": {
+                "marketIndex": 28,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 0.75,
+                "size": 4,
+                "maxPrice":0.05
+            }
+        },
+        {
+            "name": "fairAskStrategy",
+            "description": "Fair Ask Strategy",
+            "status":"off",
+            "options": {
+                "marketIndex": 28,
+                "crossMkt": true,
+                "fairMarketPriceSpread": 1,
+                "size": 8,
+                "minAvailableBalanceForOrder": 50025,
+                "minPrice":0.5
+            }
+        }
+    ]
+}

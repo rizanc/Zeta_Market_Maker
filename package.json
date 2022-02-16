@@ -13,7 +13,7 @@
     "mm": "ts-node ./src/zeta/index.ts",
     "ku": "ts-node ./src/kucoin/kucoin.ts",
     "testAll": "mocha -r ts-node/register src/**/*.spec.ts --timeout 10000",
-    "test": "mocha -r ts-node/register src/**/kucoin.spec.ts --timeout 10000"
+    "test": "mocha -r ts-node/register src/**/configuration.spec.ts --timeout 10000"
   },
   "engines": {
     "node": "16.x"
