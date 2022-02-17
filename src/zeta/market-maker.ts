@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 import { readFile, readFileSync, watch } from 'fs';
-import { loadActions, loadOptionsForAction } from '../configuration';
+import { loadActions, loadOptionsForAction, optionsIfc } from '../configuration';
 
 import {
   constants,
@@ -143,6 +143,7 @@ async function readConfig() {
 async function fairAskStrategy(
   client: Client,
   marginAccountState: types.MarginAccountState,
+  _options: any
 ) {
 
   let defaultOptions = {
@@ -154,7 +155,7 @@ async function fairAskStrategy(
     minPrice: 0.01
   }
 
-  let options = await loadOptionsForAction("fairAskStrategy", defaultOptions);
+  let options = { ...defaultOptions, ..._options };
   console.log("============ fairAskStrategy ================");
   console.log(options);
 
@@ -233,7 +234,8 @@ async function fairAskStrategy(
 
 export async function fairBidStrategy(
   client: Client,
-  marginAccountState: types.MarginAccountState) {
+  marginAccountState: types.MarginAccountState,
+  _options: any) {
 
   let defaultOptions = {
     marketIndex: -1,
@@ -243,7 +245,7 @@ export async function fairBidStrategy(
     maxPrice: 1.01
   };
 
-  let options = await loadOptionsForAction("fairBidStrategy", defaultOptions);
+  let options = { ...defaultOptions, ..._options };
   console.log("============ fairBidStrategy ================");
   console.log(options);
 
@@ -328,13 +330,19 @@ export async function fairBidStrategy(
 
 async function shortPositionsDelta(
   client: Client,
-  marginAccountState: types.MarginAccountState) {
+  marginAccountState: types.MarginAccountState,
+  _options: any) {
 
 
-  // let fairMarketPrice: number, orderbook: types.DepthOrderbook, greeks: any;
-  // ({ fairMarketPrice, orderbook, greeks } = await getMarketData(marketIndex));
+  let defaultOptions: optionsIfc = {
+    deltaNeutralPosition: 1,
+    minBuySize:1,
+    minSellSize:5
+  }
 
-  // console.log("Greek", greeks);
+  let options = { ...defaultOptions, ..._options };
+  console.log("============ shortPositionsDelta ================");
+  console.log(options);
 
   let positions: types.Position[] = client.positions;
   console.log(positions);
@@ -346,11 +354,8 @@ async function shortPositionsDelta(
 
     let results = await Promise.all(p.map(async p => {
 
-
       let fairMarketPrice: number, orderbook: types.DepthOrderbook, greeks: any;
       ({ fairMarketPrice, orderbook, greeks } = await getMarketData(p.marketIndex));
-
-
 
       let market = Exchange.markets.getMarket(p.market);
       let deltaNeutral = toPrecision(greeks["delta"] * p.position, 4);
@@ -358,20 +363,14 @@ async function shortPositionsDelta(
 
     }))
 
-    let res = {
-      deltaNeutral: results.reduce((acc, cur) => acc + cur.deltaNeutral, 0),
-      positions: results
-    }
-
     let deltaNeutralPosition = results.reduce((acc, cur) => acc + cur.deltaNeutral, 0)
 
-    // Increase by 15% for bullish
-    deltaNeutralPosition = deltaNeutralPosition * 1.2;
+    // Increase deltaNeutralPosition if bullish (>1), decrease if bearish (<1)
+    deltaNeutralPosition = deltaNeutralPosition * options.deltaNeutralPosition;
 
-    hedger.adjustSpotLongs(Math.abs(deltaNeutralPosition));
+    hedger.adjustSpotLongs(Math.abs(deltaNeutralPosition), options);
 
-    console.log(results);
-    console.log(deltaNeutralPosition);
+    console.log(`${deltaNeutralPosition} delta neutral position`);
 
   }
 

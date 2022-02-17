@@ -4,6 +4,7 @@ import API from 'kucoin-node-sdk'
 import config from '../../secret.config';
 
 import { AccountType } from './lib/types';
+import { optionsIfc } from "../configuration";
 
 API.init(config);
 
@@ -19,11 +20,12 @@ const MIN_PRICE: number = process.env["MIN_PRICE"] ? parseFloat(process.env["MIN
 const ACCOUNT_TYPE = AccountType.trade;
 
 export interface Hedger {
-    adjustSpotLongs(desiredSize: number);
+    adjustSpotLongs(desiredSize: number, options: optionsIfc)
 }
 
+
 export class KucoinHedger implements Hedger {
-    adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE) => {
+    adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: optionsIfc) => {
         console.log(desiredSize);
         const getTimestampRl = await API.rest.Others.getTimestamp();
         console.log(getTimestampRl.data);
@@ -42,14 +44,17 @@ export class KucoinHedger implements Hedger {
             let currentPosition = position[0];
 
             if (currentPosition.balance < desiredSize - BUFFER) {
-                sizeAdjustmentNeeded = desiredSize - currentPosition.balance;
-                console.log("Need To Buy More");
-            } else if (currentPosition.balance > desiredSize + BUFFER) {
 
-                if (Math.abs(desiredSize - currentPosition.balance) > 5)
+                if (desiredSize - currentPosition.balance > options.minBuySize)
                     sizeAdjustmentNeeded = desiredSize - currentPosition.balance;
 
-                console.log(`Need To Sell More - (Min 5) ${desiredSize - currentPosition.balance}`);
+                console.log(`Need To Buy More - (MIN ${options.minBuySize}) ${desiredSize - currentPosition.balance}`);
+            } else if (currentPosition.balance > desiredSize + BUFFER) {
+
+                if (Math.abs(desiredSize - currentPosition.balance) > options.minSellSize)
+                    sizeAdjustmentNeeded = desiredSize - currentPosition.balance;
+
+                console.log(`Need To Sell More - (Min ${options.minSellSize}) ${desiredSize - currentPosition.balance}`);
 
             } else {
                 console.log("Position size is good");
@@ -149,7 +154,7 @@ export async function transfer(
         currency: 'SOL',
         from: 'main',
         to: 'trade',
-        amount:'1',
+        amount: '1',
     }
 
     console.log(transfer);

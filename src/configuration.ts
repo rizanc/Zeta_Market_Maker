@@ -1,13 +1,16 @@
 import fs from "fs";
 
 export interface optionsIfc {
-    marketIndex: number,
-    crossMkt: boolean,
-    fairMarketPriceSpread: number,
-    size: number,
-    minAvailableBalanceForOrder: number,
-    minPrice: number,
-    maxPrice: number
+    deltaNeutralPosition?: number,
+    minBuySize?: number,
+    minSellSize?: number,
+    marketIndex?: number,
+    crossMkt?: boolean,
+    fairMarketPriceSpread?: number,
+    size?: number,
+    minAvailableBalanceForOrder?: number,
+    minPrice?: number,
+    maxPrice?: number
 }
 
 export function loadActions(): string[] {

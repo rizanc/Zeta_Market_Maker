@@ -5,32 +5,48 @@
         {
             "name": "shortPositionsDelta",
             "description": "Short Position Delta Display",
-            "status":"active",
-            "options": {}
+            "status": "active",
+            "options": {
+                "deltaNeutralPosition": 1.3,
+                "minBuySize": 2,
+                "minSellSize": 5
+            }
         },
         {
             "name": "fairBidStrategy",
             "description": "Fair Bid Strategy",
-            "status":"off",
+            "status": "active",
+            "options": {
+                "marketIndex": 27,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 0.75,
+                "size": 24,
+                "maxPrice": 0.05
+            }
+        },
+        {
+            "name": "fairBidStrategy",
+            "description": "Fair Bid Strategy",
+            "status": "active",
             "options": {
                 "marketIndex": 28,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 0.75,
-                "size": 4,
-                "maxPrice":0.05
+                "size": 30,
+                "maxPrice": 0.05
             }
         },
         {
             "name": "fairAskStrategy",
             "description": "Fair Ask Strategy",
-            "status":"off",
+            "status": "active",
             "options": {
-                "marketIndex": 28,
+                "marketIndex": 27,
                 "crossMkt": true,
-                "fairMarketPriceSpread": 1,
-                "size": 8,
-                "minAvailableBalanceForOrder": 50025,
-                "minPrice":0.5
+                "fairMarketPriceSpread": 0.85,
+                "size": 0.5,
+                "minAvailableBalanceForOrder": 15,
+                "minPrice": 1.65
             }
         }
     ]
