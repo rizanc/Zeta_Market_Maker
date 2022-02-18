@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 import API from 'kucoin-node-sdk'
-import config from '../../secret.config';
+import config from './secret.config';
 
 import { AccountType } from './lib/types';
 import { optionsIfc } from "../configuration";

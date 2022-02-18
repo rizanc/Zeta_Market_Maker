@@ -1,7 +1,6 @@
 require("dotenv").config();
 
-import { readFile, readFileSync, watch } from 'fs';
-import { loadActions, loadOptionsForAction, optionsIfc } from '../configuration';
+import { watchFile } from 'fs';
 
 import {
   constants,
@@ -17,36 +16,44 @@ import {
 
 import { PublicKey, Connection, Keypair } from "@solana/web3.js";
 
+import { loadActions, optionsIfc } from '../configuration';
+
 import {
-  getIndexForPrice,
-  Hedger
+  HedgerIfc
 } from "./lib";
 
 import { KucoinHedger } from "../kucoin/kucoin"
-import { sleep } from '@zetamarkets/sdk/dist/utils';
+const kucoinHedger: HedgerIfc = new KucoinHedger();
 
 const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 15000;
-const FAIR_MARKET_PRICE_SPREAD: number = parseFloat(process.env["FAIR_MARKET_PRICE_SPREAD"]) || 0.01;
 const NETWORK_URL = process.env["network_url"]!;
 const PROGRAM_ID = new PublicKey(process.env["program_id"]);
+
 let processingAskOrders = new Array<boolean>(250);
 let processingBidOrders = new Array<boolean>(250);
 
-const hedger: Hedger = new KucoinHedger();
-let config;
+const RUNNABLE_ACTIONS = {
+  "shortPositionsDelta": shortPositionsDelta,
+  "fairBidStrategy": fairBidStrategy,
+  "fairAskStrategy": fairAskStrategy,
+};
 
-async function main() {
+let client;
 
-  console.log("Starting");
+async function runMarketMaker() {
 
-  // readConfig();
+  console.log("Market Maker Starting");
 
-  // watch("mm_config.json", (event, filename) => {
-  //   if (filename && event === 'change') {
-  //     console.log(`${filename} file Changed`);
-  //     readConfig();
-  //   }
-  // });
+
+  watchFile("mm_config.json", async (curr, prev) => {
+
+    if (client) {
+      await actionsLoop();
+    }
+
+    console.log(`Config file Changed ${prev.mtime} on ${curr.mtime}`);
+
+  });
 
 
   const userKey = Keypair.fromSecretKey(
@@ -66,7 +73,7 @@ async function main() {
 
   );
 
-  const client = await Client.load(
+  client = await Client.load(
     connection,
     wallet,
     utils.defaultCommitment()
@@ -76,70 +83,56 @@ async function main() {
   await client.updateState();
   utils.displayState();
 
+  await actionsLoop();
+
+  setInterval(async () => {
+    await actionsLoop();
+  }, SLEEP_MS);
+
+}
+
+
+async function actionsLoop() {
+
+  console.log(`${new Date().toLocaleTimeString('en-US')} Actions Starting`);
+
   let oraclePrice: number = Exchange.oracle.getPrice("SOL/USD").price;
   console.log(`Oracle Price: ${oraclePrice}`);
 
-  setInterval((async () => {
+  await client.updateState();
 
-    await client.updateState();
+  oraclePrice = Exchange.oracle.getPrice("SOL/USD").price;
 
-    oraclePrice = Exchange.oracle.getPrice("SOL/USD").price;
-    let index: number = getIndexForPrice(oraclePrice);
+  let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+    client.marginAccount
+  );
 
-    let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
-      client.marginAccount
-    );
+  console.log("=================================================");
+  console.log(marginAccountState);
+  console.log("=================================================");
 
-    console.log("=================================================");
-    console.log(marginAccountState);
-    console.log("=================================================");
-
-    if (client.positions && client.positions.length > 0) {
-      let pos = client.positions.map((p) => { return { position: p.position, costOfTrades: p.costOfTrades, marketIndex: p.marketIndex, avgPrice: (p.costOfTrades / p.position).toFixed(4) } });
-      console.log(pos);
-    }
-
-    let runnableActions = {
-      "shortPositionsDelta": shortPositionsDelta,
-      "fairBidStrategy": fairBidStrategy,
-      "fairAskStrategy": fairAskStrategy,
-    };
-
-    let actions: any[] = loadActions().filter((a: any) => a.status === "active");
-
-    let ra = [];
-    for (let i = 0; i < actions.length; i++) {
-      ra.push(runnableActions[actions[i].name](
-        client, marginAccountState, actions[i].options));
-    }
-
-    await Promise.all(
-      ra
-    );
-
-    console.log("Actions Finished");
-
-  }), 60000);
-
-}
-
-
-async function readConfig() {
-  let _file = await readFileSync("mm_config.json");
-  console.log(_file.length);
-  if (_file.length > 0) {
-    config = JSON.parse(_file.toString());
-    console.log(config);
+  if (client.positions && client.positions.length > 0) {
+    let pos = client.positions.map((p) => { return { position: p.position, costOfTrades: p.costOfTrades, marketIndex: p.marketIndex, avgPrice: (p.costOfTrades / p.position).toFixed(4) }; });
+    console.log(pos);
   }
+
+  let actions: any[] = loadActions().filter((a: any) => a.status === "active");
+
+  let ra = [];
+  for (let i = 0; i < actions.length; i++) {
+    ra.push(RUNNABLE_ACTIONS[actions[i].name](
+      client, marginAccountState, actions[i].options));
+  }
+
+  await Promise.all(
+    ra
+  );
+
+  console.log(`${new Date().toLocaleTimeString('en-US')} Actions Finished`);
+
 }
 
-/* 
-* @param client 
-* @param marketIndex 
-* @param marginAccountState 
-* @param crossMkt Set to true if don't mind creating a taker order.
-* @returns 
-*/
+
 async function fairAskStrategy(
   client: Client,
   marginAccountState: types.MarginAccountState,
@@ -190,13 +183,12 @@ async function fairAskStrategy(
   else {
     try {
       processingAskOrders[marketIndex] = true;
-      console.log("Processing Orders");
 
       let wantedOrders = [];
       let fairPriceToAsk = fairMarketPrice * fairMarketPriceSpread;
       fairPriceToAsk = parseFloat(fairPriceToAsk.toFixed(4));
 
-      console.log(fairMarketPrice);
+      console.log(`fairMarketPrice: ${fairMarketPrice}`);
 
       fairPriceToAsk = Math.max(fairPriceToAsk, minPrice);
       console.log(`Price to ask: ${fairPriceToAsk}`);
@@ -220,8 +212,6 @@ async function fairAskStrategy(
       wantedOrders.push(wantedOrder);
 
       await convergeAskOrders(marketIndex, orders, wantedOrders, client, .01);
-
-      console.log("DONE PROCESSING ORDERS");
 
     } catch (e) {
       console.log(e);
@@ -284,7 +274,6 @@ export async function fairBidStrategy(
   else {
     try {
       processingBidOrders[marketIndex] = true;
-      console.log("Processing Bid Orders");
 
       let wantedOrders = [];
       let fairPriceToBid = fairMarketPrice * (fairMarketPriceSpread);
@@ -314,8 +303,6 @@ export async function fairBidStrategy(
 
       await convergeBidOrders(marketIndex, orders, wantedOrders, client, .01);
 
-      console.log("DONE PROCESSING ORDERS");
-
     } catch (e) {
       console.log(e);
 
@@ -323,10 +310,8 @@ export async function fairBidStrategy(
       processingBidOrders[marketIndex] = false;
     }
   }
-
-
-
 }
+
 
 async function shortPositionsDelta(
   client: Client,
@@ -336,8 +321,8 @@ async function shortPositionsDelta(
 
   let defaultOptions: optionsIfc = {
     deltaNeutralPosition: 1,
-    minBuySize:1,
-    minSellSize:5
+    minBuySize: 1,
+    minSellSize: 5
   }
 
   let options = { ...defaultOptions, ..._options };
@@ -358,7 +343,7 @@ async function shortPositionsDelta(
       ({ fairMarketPrice, orderbook, greeks } = await getMarketData(p.marketIndex));
 
       let market = Exchange.markets.getMarket(p.market);
-      let deltaNeutral = toPrecision(greeks["delta"] * p.position, 4);
+      let deltaNeutral = toPrec(greeks["delta"] * p.position, 4);
       return { marketIndex: p.marketIndex, exp: market.expiryIndex, kind: market.kind, strike: market.strike, fairMarketPrice, deltaNeutral, averageCost: p.costOfTrades / p.position, greeks, position: p };
 
     }))
@@ -368,78 +353,13 @@ async function shortPositionsDelta(
     // Increase deltaNeutralPosition if bullish (>1), decrease if bearish (<1)
     deltaNeutralPosition = deltaNeutralPosition * options.deltaNeutralPosition;
 
-    hedger.adjustSpotLongs(Math.abs(deltaNeutralPosition), options);
+    await kucoinHedger.adjustSpotLongs(Math.abs(deltaNeutralPosition), options);
 
     console.log(`${deltaNeutralPosition} delta neutral position`);
 
   }
-
-
 }
 
-
-async function snipeStrategy(
-  client: Client,
-  marketIndex: number,
-  marginAccountState: types.MarginAccountState) {
-
-
-  let fairMarketPrice: number, orderbook: types.DepthOrderbook, greeks: any;
-  ({ fairMarketPrice, orderbook, greeks } = await getMarketData(marketIndex));
-
-  console.log("Greek", greeks);
-
-  let orders: types.Order[] = client.orders;
-
-  console.log(processingAskOrders[marketIndex]);
-  if (processingAskOrders[marketIndex]) {
-    return;
-  }
-  else {
-    try {
-      processingAskOrders[marketIndex] = true;
-      console.log("Processing Orders");
-
-      let wantedOrders = [];
-      let fairPriceToAsk = fairMarketPrice * FAIR_MARKET_PRICE_SPREAD;
-      let fairPriceToBid = fairMarketPrice * (2 - FAIR_MARKET_PRICE_SPREAD);
-
-      fairPriceToAsk = parseFloat(fairPriceToAsk.toFixed(4));
-      fairPriceToBid = parseFloat(fairPriceToBid.toFixed(4));
-
-      console.log("Fair Market Range:", fairPriceToBid, fairMarketPrice, fairPriceToAsk);
-      if (orderbook.bids.length > 0) {
-
-        let topBid = parseFloat(orderbook.bids[0].price.toFixed(4));
-        console.log("TOP BID", topBid);
-
-        if (topBid >= fairPriceToBid) {
-          console.log("HITTING BID");
-          wantedOrders.push({
-            market: Exchange.markets.markets[marketIndex].address,
-            price: toPrecision(topBid, 4),
-            size: 1,
-            side: 1
-          });
-        }
-
-      }
-
-      await convergeAskOrders(marketIndex, client.orders, wantedOrders, client);
-
-      console.log("DONE PROCESSING ORDERS");
-
-    } catch (e) {
-      console.log(e);
-
-    } finally {
-      processingAskOrders[marketIndex] = false;
-    }
-  }
-
-
-
-}
 
 async function getMarketData(marketIndex: number) {
   let marketAddress = Exchange.markets.markets[marketIndex].address;
@@ -449,48 +369,30 @@ async function getMarketData(marketIndex: number) {
   let orderbook: types.DepthOrderbook = Exchange.markets.markets[marketIndex].orderbook;
 
   let greeksIndex = utils.getGreeksIndex(marketIndex);
-  let callDelta = toPrecision(1 - utils.convertNativeBNToDecimal(
+  let callDelta = toPrec(1 - utils.convertNativeBNToDecimal(
     Exchange.greeks.productGreeks[greeksIndex].delta,
     constants.PRICING_PRECISION
   ), 4);
 
-  let sigma = toPrecision(Decimal.fromAnchorDecimal(
+  let sigma = toPrec(Decimal.fromAnchorDecimal(
     Exchange.greeks.productGreeks[greeksIndex].volatility
   ).toNumber(), 4);
 
-  let vega = toPrecision(Decimal.fromAnchorDecimal(
+  let vega = toPrec(Decimal.fromAnchorDecimal(
     Exchange.greeks.productGreeks[greeksIndex].vega
   ).toNumber(), 4);
 
   return { marketAddress, fairMarketPrice, orderbook, greeks: { delta: callDelta, sigma, vega } };
 }
 
-/**
- * Converges ask orders
- * @param marketIndex
- * @param orders
- * @param wantedAskOrders
- * @param client
- * @param spread
- */
-async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wantedAskOrders: any[], client: Client, shoulder: number = 0) {
 
+async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wantedAskOrders: any[], client: Client, shoulder: number = 0) {
 
   let cancelOrders = [];
   let newOrders = [];
 
   let askOrders = _orders.filter(order => order.marketIndex == marketIndex && order.side == 1);
 
-
-  // Cases
-  // 1.No orders and no wanted orders
-  // Do nothing
-
-  // 2.Orders and no wanted orders
-  // Cancel all orders
-
-  // 3.No orders and wanted Orders
-  //   Create new orders
   if (askOrders.length == 0 && wantedAskOrders.length > 0) {
     newOrders = wantedAskOrders;
   } else if (askOrders.length > 0 && wantedAskOrders.length > 0) {
@@ -501,16 +403,13 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
 
           (wantedOrder.price <= order.price + shoulder &&
             wantedOrder.price >= order.price - shoulder)) {
-          console.log("SSDSDSDSDD");
-          // console.log(wantedOrder.price,order.price + .1 )
-          // console.log(wantedOrder.price,order.price - .1 )
+
           return true;
         } else {
           return false;
         }
       });
 
-      // console.log(foundOrderIndex);
       if (foundOrderIndex == -1) {
         cancelOrders.push(order);
       } else {
@@ -527,15 +426,6 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
 
   await placeOrders(cancelOrders, newOrders, client);
 
-}
-
-function printConvergedOrders(wantedOrders: any[], cancelOrders: any[], newOrders: any[]) {
-  console.log("Wanted Orders");
-  console.log(wantedOrders);
-  console.log("Cancel Orders");
-  console.log(cancelOrders);
-  console.log("New Orders");
-  console.log(newOrders);
 }
 
 async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wantedBidOrders: any[], client: Client, shoulder: number = 0) {
@@ -579,6 +469,15 @@ async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wa
 
 }
 
+function printConvergedOrders(wantedOrders: any[], cancelOrders: any[], newOrders: any[]) {
+  console.log("Wanted Orders");
+  console.log(wantedOrders);
+  console.log("Cancel Orders");
+  console.log(cancelOrders);
+  console.log("New Orders");
+  console.log(newOrders);
+}
+
 
 async function placeOrders(cancelOrders: any[], newOrders: any[], client: Client) {
 
@@ -595,17 +494,13 @@ async function placeOrders(cancelOrders: any[], newOrders: any[], client: Client
   }
 }
 
-function toPrecision(x: number, precision: number) {
+
+function toPrec(x: number, precision: number): number {
   return parseFloat(x.toFixed(precision));
 }
 
-async function exit(client: Client) {
-  console.log("Exiting");
-  await client.close();
-  await Exchange.close();
-  console.log("Exited");
+
+export default {
+  run: runMarketMaker,
 
 }
-
-
-export default main;

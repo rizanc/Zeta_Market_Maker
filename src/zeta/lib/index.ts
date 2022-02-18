@@ -1,12 +1,4 @@
 export {
-    placeAskOrder,
-    placeAskOrderForPrice,
-    placeBidOrderForPrice,
-    placeBidOrder,
-    cancelAsks,
-    cancelBids,
-    getFairMarketPrice,
-    getIndexForPrice,
-    Hedger
+    HedgerIfc
 } from "./library";
 
