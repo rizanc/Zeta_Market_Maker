@@ -481,17 +481,33 @@ function printConvergedOrders(wantedOrders: any[], cancelOrders: any[], newOrder
 
 async function placeOrders(cancelOrders: any[], newOrders: any[], client: Client) {
 
-  if (cancelOrders.length > 0) {
-    await Promise.all(cancelOrders.map(async (order) => {
-      await client.cancelOrder(order.market, order.orderId, order.side);
-    }));
+
+  while (newOrders.length > 0 || cancelOrders.length > 0) {
+
+    if (newOrders.length > 0) {
+      if (cancelOrders.length == 0) {
+        let order = newOrders.shift();
+        await client.placeOrder(order.market, order.price * 1e6, order.size * 1e3, order.side);
+      } else {
+        let cancelOrder = cancelOrders.shift();
+        let newOrder = newOrders.shift();
+        await client.cancelAndPlaceOrder(
+          cancelOrder.market,
+          cancelOrder.orderId,
+          cancelOrder.side,
+          newOrder.price * 1e6,
+          newOrder.size * 1e3,
+          newOrder.side
+        );
+      }
+    } else
+      if (cancelOrders.length > 0) {
+        let cancelOrder = cancelOrders.shift();
+        await client.cancelOrder(cancelOrder.market, cancelOrder.orderId, cancelOrder.side);
+
+      }
   }
 
-  if (newOrders.length > 0) {
-    await Promise.all(newOrders.map(async (order) => {
-      await client.placeOrder(order.market, order.price * 1e6, order.size * 1e3, order.side);
-    }));
-  }
 }
 
 
