@@ -4,7 +4,7 @@ import API from 'kucoin-node-sdk'
 import config from './secret.config';
 
 import { AccountType } from './lib/types';
-import { optionsIfc } from "../configuration";
+import { OptionsIfc } from "../lib";
 
 API.init(config);
 
@@ -19,13 +19,13 @@ const BUFFER = process.env["BUFFER"] ? parseFloat(process.env["BUFFER"]) : 0.01;
 
 const ACCOUNT_TYPE = AccountType.trade;
 
-export interface Hedger {
-    adjustSpotLongs(desiredSize: number, options: optionsIfc)
+export interface HedgerIfc {
+    adjustSpotLongs(desiredSize: number, options: OptionsIfc)
 }
 
 
-export class KucoinHedger implements Hedger {
-    adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: optionsIfc) => {
+export class KucoinHedger implements HedgerIfc {
+    adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: OptionsIfc) => {
         console.log(desiredSize);
         const getTimestampRl = await API.rest.Others.getTimestamp();
         console.log(getTimestampRl.data);

@@ -1,4 +1,0 @@
-export {
-    HedgerIfc
-} from "./library";
-

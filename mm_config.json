@@ -7,7 +7,7 @@
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 1.1,
+                "deltaNeutralPosition": 1,
                 "minBuySize": 0.1,
                 "minSellSize": 500
             }
@@ -20,8 +20,8 @@
                 "marketIndex": 4,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 0.75,
-                "size": 10,
-                "maxPrice": 1.55
+                "size": 58.74,
+                "maxPrice": 0.81
             }
         },
         {
@@ -29,22 +29,22 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 28,
+                "marketIndex": 3,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 0.75,
-                "size": 30,
-                "maxPrice": 0.05
+                "size": 32.61,
+                "maxPrice": 6
             }
         },
         {
             "name": "fairAskStrategy",
             "description": "Fair Ask Strategy",
-            "status": "active",
+            "status": "off",
             "options": {
                 "marketIndex": 5,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 1.25,
-                "size": 9,
+                "size": 9.35,
                 "minAvailableBalanceForOrder": 50,
                 "minPrice": 1.15
             }
@@ -86,12 +86,12 @@
             "options": {
                 "marketIndex": 4,
                 "side": 1,
-                "size": 3,
-                "crossMkt": false,
+                "size": 4,
+                "crossMkt": true,
                 "minAvailableBalanceForOrder": 10,
-                "minPrice": 1.99,
+                "minPrice": 2.50,
                 "minSleepSeconds": 20,
-                "maxPositionSize":60
+                "maxPositionSize":69
             }
         }
     ]

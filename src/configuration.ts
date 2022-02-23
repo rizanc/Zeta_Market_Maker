@@ -1,70 +1,55 @@
 import fs from "fs";
+import {
+    ConfigurationIfc,
+    OptionsIfc
+  } from "./lib";
 
-export interface optionsIfc {
-    deltaNeutralPosition?: number,
-    minBuySize?: number,
-    minSellSize?: number,
-    marketIndex?: number,
-    crossMkt?: boolean,
-    fairMarketPriceSpread?: number,
-    size?: number,
-    minAvailableBalanceForOrder?: number,
-    minPrice?: number,
-    maxPrice?: number
-}
 
-export function loadActions(): string[] {
+export class FileConfiguration implements ConfigurationIfc {
 
-    let config = JSON.parse(fs.readFileSync("mm_config.json", "utf8",));
-    let actions = config.actions;
-    return actions;
+    private filename: string;
 
-}
-
-export function loadSnipers(): string[] {
-
-    let config = JSON.parse(fs.readFileSync("mm_config.json", "utf8",));
-    let snipers = config.snipers;
-    return snipers;
-
-}
-
-export function loadOptionsForAction(actionName: String, defaultOptions: Object): optionsIfc {
-    let result = {
-        success: true,
-        config: null,
-        msg: ""
-    }
-
-    try {
-        result.config = JSON.parse(fs.readFileSync("mm_config.json", "utf8",));
-
-    } catch (err) {
-
-        result.success = false;
-        result.msg = err.message;
-
-    }
-    let options: optionsIfc = result.config.actions.filter(a => a.name == actionName)[0].options;
-    return { ...defaultOptions, ...options };
-}
-
-export function readConfig(path): any {
-
-    let result = {
-        success: true,
-        config: null,
-        msg: ""
-    }
-
-    try {
-        result.config = JSON.parse(fs.readFileSync(path, "utf8",));
-    } catch (err) {
-
-        result.success = false;
-        result.msg = err.message;
+    public constructor(_filename: string) {
+        this.filename = _filename;
 
     }
 
-    return result;
+    public loadActions(): string[] {
+
+        let config = JSON.parse(fs.readFileSync(this.filename, "utf8",));
+        let actions = config.actions;
+        return actions;
+
+    }
+
+    public loadSnipers(): string[] {
+
+        let config = JSON.parse(fs.readFileSync(this.filename, "utf8",));
+        let snipers = config.snipers;
+        return snipers;
+
+    }
+
+    public loadOptionsForAction(actionName: String, defaultOptions: Object): OptionsIfc {
+        let result = {
+            success: true,
+            config: null,
+            msg: ""
+        }
+
+        try {
+            result.config = JSON.parse(fs.readFileSync(this.filename, "utf8",));
+
+        } catch (err) {
+
+            result.success = false;
+            result.msg = err.message;
+
+        }
+        let options: OptionsIfc = result.config.actions.filter(a => a.name == actionName)[0].options;
+        return { ...defaultOptions, ...options };
+    }
 }
+
+
+

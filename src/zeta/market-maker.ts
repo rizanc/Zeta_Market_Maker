@@ -15,15 +15,17 @@ import {
 
 } from "@zetamarkets/sdk";
 
-
-
 import { PublicKey, Connection, Keypair } from "@solana/web3.js";
 
-import { loadActions, loadSnipers, optionsIfc } from '../configuration';
-
 import {
-  HedgerIfc
-} from "./lib";
+  HedgerIfc,
+  ConfigurationIfc,
+  OptionsIfc
+} from "../lib";
+
+
+import { FileConfiguration } from '../configuration';
+const config: ConfigurationIfc = new FileConfiguration("mm_config.json");
 
 import { KucoinHedger } from "../kucoin/kucoin"
 const kucoinHedger: HedgerIfc = new KucoinHedger();
@@ -34,7 +36,6 @@ const PROGRAM_ID = new PublicKey(process.env["program_id"]);
 
 let processingAskOrders = new Array<boolean>(250);
 let processingBidOrders = new Array<boolean>(250);
-let lastTime;
 
 const RUNNABLE_ACTIONS = {
   "shortPositionsDelta": shortPositionsDelta,
@@ -78,7 +79,7 @@ async function runMarketMaker() {
     utils.defaultCommitment(),
     new types.DummyWallet(), 100,
     async (event: events.EventType, data: any) => {
-      //if (event == events.EventType.ORDERBOOK)
+
       switch (event) {
         case events.EventType.ORDERBOOK:
           let marketIndex = data.marketIndex;
@@ -87,13 +88,9 @@ async function runMarketMaker() {
           let orderbook = market.orderbook;
           console.log("=================")
           console.log(orderbook);
-          //console.log(lastTime);
-          if (lastTime) {
-            console.log((new Date().getTime() - lastTime) / 1000);
-          }
-          lastTime = new Date().getTime();
-          // console.log(sniperActions);
-          let snipers: any[] = loadSnipers()
+
+          const configuration: ConfigurationIfc = new FileConfiguration("mm_config.json");
+          let snipers: any[] = configuration.loadSnipers()
             .filter((a: any) => a["status"] === "active" && a.options.marketIndex === marketIndex);
 
           let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
@@ -102,7 +99,6 @@ async function runMarketMaker() {
 
           await runSniperActions(snipers, marginAccountState);
           console.log(".=================")
-
 
         default:
           return;
@@ -146,7 +142,7 @@ async function runSniperActions(snipers: any[], marginAccountState: types.Margin
 
 async function sniperInitialize() {
 
-  let snipers: any[] = loadSnipers()
+  let snipers: any[] = config.loadSnipers()
 
   let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
     client.marginAccount
@@ -188,7 +184,7 @@ async function actionsLoop() {
     client.marginAccount
   );
 
-  let actions: any[] = loadActions().filter((a: any) => a.status === "active");
+  let actions: any[] = config.loadActions().filter((a: any) => a.status === "active");
 
   let ra = [];
   for (let i = 0; i < actions.length; i++) {
@@ -494,7 +490,7 @@ async function shortPositionsDelta(
   _options: any) {
 
 
-  let defaultOptions: optionsIfc = {
+  let defaultOptions: OptionsIfc = {
     deltaNeutralPosition: 1,
     minBuySize: 1,
     minSellSize: 5
