@@ -152,7 +152,7 @@ async function sniperInitialize() {
     client.marginAccount
   );
 
-  await runSniperActions(snipers, marginAccountState);
+  await runSniperActions(snipers.filter(a => a.status == "active"), marginAccountState);
 
   for (let i = 0; i < snipers.length; i++) {
 
@@ -187,15 +187,6 @@ async function actionsLoop() {
   let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
     client.marginAccount
   );
-
-  // console.log("=================================================");
-  // console.log(marginAccountState);
-  // console.log("=================================================");
-
-  // if (client.positions && client.positions.length > 0) {
-  //   // let pos = client.positions.map((p) => { return { position: p.position, costOfTrades: p.costOfTrades, marketIndex: p.marketIndex, avgPrice: (p.costOfTrades / p.position).toFixed(4) }; });
-  //   // console.log(pos);
-  // }
 
   let actions: any[] = loadActions().filter((a: any) => a.status === "active");
 
