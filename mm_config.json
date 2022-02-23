@@ -17,17 +17,17 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 5,
+                "marketIndex": 4,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 0.65,
-                "size": 40,
-                "maxPrice": 2.4934
+                "fairMarketPriceSpread": 0.75,
+                "size": 10,
+                "maxPrice": 1.55
             }
         },
         {
             "name": "fairBidStrategy",
             "description": "Fair Bid Strategy",
-            "status": "false",
+            "status": "off",
             "options": {
                 "marketIndex": 28,
                 "crossMkt": false,
@@ -39,27 +39,59 @@
         {
             "name": "fairAskStrategy",
             "description": "Fair Ask Strategy",
-            "status": "off",
+            "status": "active",
             "options": {
                 "marketIndex": 5,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 0.85,
-                "size": 1,
+                "fairMarketPriceSpread": 1.25,
+                "size": 9,
                 "minAvailableBalanceForOrder": 50,
-                "minPrice": 5.29
+                "minPrice": 1.15
             }
         },
         {
             "name": "fairAskStrategy",
-            "description": "Fair Ask Strategy",
+            "description": "Fair Ask Strategy (HIT THE BID)",
             "status": "off",
             "options": {
-                "marketIndex": 6,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 1.1,
-                "size": 8,
+                "marketIndex": 4,
+                "crossMkt": true,
+                "fairMarketPriceSpread": 0.25,
+                "size": 20,
                 "minAvailableBalanceForOrder": 15,
-                "minPrice": 2.99
+                "minPrice": 2.18
+            }
+        }
+    ],
+    "snipers": [
+        {
+            "name": "bidSniper",
+            "description": "Will Snipe the Bid Cross Mkt Sell",
+            "status": "off",
+            "options": {
+                "marketIndex": 3,
+                "side": 1,
+                "size": 5,
+                "crossMkt": true,
+                "minAvailableBalanceForOrder": 15,
+                "minPrice": 4.0012,
+                "minSleepSeconds": 20,
+                "maxPositionSize":35
+            }
+        },
+        {
+            "name": "bidSniper",
+            "description": "Will Snipe the Bid Cross Mkt Sell",
+            "status": "off",
+            "options": {
+                "marketIndex": 4,
+                "side": 1,
+                "size": 3,
+                "crossMkt": false,
+                "minAvailableBalanceForOrder": 10,
+                "minPrice": 1.99,
+                "minSleepSeconds": 20,
+                "maxPositionSize":60
             }
         }
     ]

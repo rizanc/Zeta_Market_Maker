@@ -11,12 +11,15 @@ import {
   Network,
   utils,
   types,
+  events
 
 } from "@zetamarkets/sdk";
 
+
+
 import { PublicKey, Connection, Keypair } from "@solana/web3.js";
 
-import { loadActions, optionsIfc } from '../configuration';
+import { loadActions, loadSnipers, optionsIfc } from '../configuration';
 
 import {
   HedgerIfc
@@ -25,17 +28,19 @@ import {
 import { KucoinHedger } from "../kucoin/kucoin"
 const kucoinHedger: HedgerIfc = new KucoinHedger();
 
-const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 15000;
+const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 25000;
 const NETWORK_URL = process.env["network_url"]!;
 const PROGRAM_ID = new PublicKey(process.env["program_id"]);
 
 let processingAskOrders = new Array<boolean>(250);
 let processingBidOrders = new Array<boolean>(250);
+let lastTime;
 
 const RUNNABLE_ACTIONS = {
   "shortPositionsDelta": shortPositionsDelta,
   "fairBidStrategy": fairBidStrategy,
   "fairAskStrategy": fairAskStrategy,
+  "bidSniper": bidSniper
 };
 
 let client;
@@ -50,6 +55,8 @@ async function runMarketMaker() {
     if (client) {
       await actionsLoop();
     }
+
+    await sniperInitialize();
 
     console.log(`Config file Changed ${prev.mtime} on ${curr.mtime}`);
 
@@ -70,6 +77,37 @@ async function runMarketMaker() {
     connection,
     utils.defaultCommitment(),
     new types.DummyWallet(), 100,
+    async (event: events.EventType, data: any) => {
+      //if (event == events.EventType.ORDERBOOK)
+      switch (event) {
+        case events.EventType.ORDERBOOK:
+          let marketIndex = data.marketIndex;
+          let markets = Exchange.markets;
+          let market = markets.markets[4];
+          let orderbook = market.orderbook;
+          console.log("=================")
+          console.log(orderbook);
+          //console.log(lastTime);
+          if (lastTime) {
+            console.log((new Date().getTime() - lastTime) / 1000);
+          }
+          lastTime = new Date().getTime();
+          // console.log(sniperActions);
+          let snipers: any[] = loadSnipers()
+            .filter((a: any) => a["status"] === "active" && a.options.marketIndex === marketIndex);
+
+          let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+            client.marginAccount
+          );
+
+          await runSniperActions(snipers, marginAccountState);
+          console.log(".=================")
+
+
+        default:
+          return;
+      }
+    }
 
   );
 
@@ -80,9 +118,13 @@ async function runMarketMaker() {
 
   );
 
+  client.pollInterval = 10;
+
+
   await client.updateState();
   utils.displayState();
 
+  await sniperInitialize();
   await actionsLoop();
 
   setInterval(async () => {
@@ -91,6 +133,45 @@ async function runMarketMaker() {
 
 }
 
+async function runSniperActions(snipers: any[], marginAccountState: types.MarginAccountState) {
+  let sniperActions = [];
+  for (let i = 0; i < snipers.length; i++) {
+    sniperActions.push(RUNNABLE_ACTIONS[snipers[i].name](
+      client, marginAccountState, snipers[i].options));
+  }
+  await Promise.all(
+    sniperActions
+  );
+}
+
+async function sniperInitialize() {
+
+  let snipers: any[] = loadSnipers()
+
+  let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+    client.marginAccount
+  );
+
+  await runSniperActions(snipers, marginAccountState);
+
+  for (let i = 0; i < snipers.length; i++) {
+
+    switch (snipers[i].status) {
+      case "active":
+        // Subscribe to a market index.
+        Exchange.markets.unsubscribeMarket(snipers[i].options.marketIndex);
+        Exchange.markets.subscribeMarket(snipers[i].options.marketIndex);
+        Exchange.markets.pollInterval = snipers[i].options.minSleepSeconds;
+        break;
+      default:
+        Exchange.markets.unsubscribeMarket(snipers[i].options.marketIndex);
+        break;
+
+    }
+
+  }
+
+}
 
 async function actionsLoop() {
 
@@ -107,14 +188,14 @@ async function actionsLoop() {
     client.marginAccount
   );
 
-  console.log("=================================================");
-  console.log(marginAccountState);
-  console.log("=================================================");
+  // console.log("=================================================");
+  // console.log(marginAccountState);
+  // console.log("=================================================");
 
-  if (client.positions && client.positions.length > 0) {
-    let pos = client.positions.map((p) => { return { position: p.position, costOfTrades: p.costOfTrades, marketIndex: p.marketIndex, avgPrice: (p.costOfTrades / p.position).toFixed(4) }; });
-    console.log(pos);
-  }
+  // if (client.positions && client.positions.length > 0) {
+  //   // let pos = client.positions.map((p) => { return { position: p.position, costOfTrades: p.costOfTrades, marketIndex: p.marketIndex, avgPrice: (p.costOfTrades / p.position).toFixed(4) }; });
+  //   // console.log(pos);
+  // }
 
   let actions: any[] = loadActions().filter((a: any) => a.status === "active");
 
@@ -132,6 +213,109 @@ async function actionsLoop() {
 
 }
 
+async function bidSniper(
+  client: Client,
+  marginAccountState: any,
+  _options: any
+) {
+
+  let defaultOptions = {
+    marketIndex: -1,
+    size: 1,
+    minAvailableBalanceForOrder: 5000,
+    minPrice: 0.01,
+    minSleepSeconds: 20,
+    maxPositionSize: 20,
+    crossMkt: false,
+  }
+
+  let options = { ...defaultOptions, ..._options };
+  console.log("============ bidSniper ================");
+  console.log(options);
+
+  let {
+    marketIndex,
+    crossMkt,
+    size,
+    maxPositionSize,
+    minPrice,
+    minAvailableBalanceForOrder } = options;
+
+
+  let positionSize = 0;
+  if (client.positions && client.positions.length > 0) {
+
+    positionSize = client.positions
+      .filter(a => a.marketIndex === options.marketIndex)
+      .reduce((a, b) => a + b.position, 0);
+
+  }
+
+  let availableBalance = toPrec(marginAccountState.availableBalanceInitial, 4);
+
+  let marketAddress: PublicKey,
+    fairMarketPrice: number,
+    orderbook: types.DepthOrderbook;
+
+  ({ marketAddress, fairMarketPrice, orderbook } = await getMarketData(marketIndex));
+
+  let orders: types.Order[] = client.orders;
+
+
+  console.log(processingAskOrders[marketIndex]);
+  // if (processingAskOrders[marketIndex]) {
+
+  try {
+    //TODO: Make Sure it doesn't run if an other process is already running.
+    //processingAskOrders[marketIndex] = true;
+
+    let wantedOrders = [];
+    console.log(`Available Balance (Initial): ${availableBalance} ${minAvailableBalanceForOrder}`);
+    console.log(`Position Size: ${positionSize}`);
+    console.log(`fairMarketPrice: ${fairMarketPrice}`);
+    console.log(`Price to ask: ${minPrice}`);
+
+    let wantedOrder = {
+      market: Exchange.markets.markets[marketIndex].address,
+      price: toPrec(minPrice, 4),
+      size: size,
+      side: types.Side.ASK
+    }
+
+    if (!orderbook || orderbook.bids.length == 0) {
+      console.log("No Bids on OrderBook");
+    } else if (positionSize >= 0 || Math.abs(positionSize) + size >= maxPositionSize) {
+      console.log("Position too big");
+    } else if (availableBalance < minAvailableBalanceForOrder) {
+      console.log("Initial Balance too low");
+    } else {
+
+      // Get the BID
+      let topBid = parseFloat(orderbook.bids[0].price.toFixed(4))
+      let topSize = parseFloat(orderbook.bids[0].size.toFixed(4))
+      console.log(topBid, topSize);
+
+      if (topBid >= minPrice && topSize >= size) {
+        wantedOrder.price = toPrec((crossMkt ? topBid : topBid + 0.001), 4);
+        wantedOrders.push(wantedOrder);
+        console.log("BID", topBid, wantedOrder.price);
+        console.log(wantedOrders);
+      } else {
+        console.log("No Order Needed");
+      }
+
+    }
+
+    await convergeAskOrders(marketIndex, orders, wantedOrders, client, .01);
+
+  } catch (e) {
+    console.log(e);
+
+  } finally {
+    //processingAskOrders[marketIndex] = false;
+  }
+
+}
 
 async function fairAskStrategy(
   client: Client,

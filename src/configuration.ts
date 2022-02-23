@@ -21,6 +21,14 @@ export function loadActions(): string[] {
 
 }
 
+export function loadSnipers(): string[] {
+
+    let config = JSON.parse(fs.readFileSync("mm_config.json", "utf8",));
+    let snipers = config.snipers;
+    return snipers;
+
+}
+
 export function loadOptionsForAction(actionName: String, defaultOptions: Object): optionsIfc {
     let result = {
         success: true,
