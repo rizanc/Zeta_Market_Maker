@@ -400,10 +400,10 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
     askOrders.forEach((order) => {
       let foundOrderIndex = wantedAskOrders.findIndex(wantedOrder => {
         if (wantedOrder.side == 1 &&
-
-          (wantedOrder.price <= order.price + shoulder &&
-            wantedOrder.price >= order.price - shoulder)) {
-
+          (
+            (wantedOrder.price <= order.price + shoulder && wantedOrder.price >= order.price - shoulder)
+            && (wantedOrder.size == order.size)
+          )) {
           return true;
         } else {
           return false;
@@ -419,6 +419,8 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
     );
 
     newOrders = wantedAskOrders;
+  } else if (askOrders.length > 0 && wantedAskOrders.length == 0) {
+    cancelOrders = askOrders;
   }
 
 
@@ -445,7 +447,10 @@ async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wa
     bidOrders.forEach((bidOrder) => {
       let foundOrderIndex = wantedBidOrders.findIndex(wantedOrder => {
         if (wantedOrder.side == 0 &&
-          (Math.abs(bidOrder.price - wantedOrder.price) <= shoulder)) {
+          (
+            (Math.abs(bidOrder.price - wantedOrder.price) <= shoulder)
+            && (wantedOrder.size == bidOrder.size)
+          )) {
           return true;
         } else {
           return false;
