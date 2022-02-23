@@ -1,6 +1,4 @@
 node_modules
 .env
 secret
-
-liquidator.ts
 package-lock.json
