@@ -1,5 +1,5 @@
 require("dotenv").config();
-console.log(process.env);
+
 import API from 'kucoin-node-sdk'
 import config from './secret.config';
 
