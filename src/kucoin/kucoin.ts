@@ -1,5 +1,5 @@
 require("dotenv").config();
-
+console.log(process.env);
 import API from 'kucoin-node-sdk'
 import config from './secret.config';
 
@@ -15,7 +15,7 @@ const SIZE_DECIMALS: number = process.env["SIZE_DECIMALS"] ? parseInt(process.en
 const INSIDE_MKT_BUFFER: number = process.env["INSIDE_MKT_BUFFER"] ? parseInt(process.env["INSIDE_MKT_BUFFER"]) : 0.01;
 const DESIRED_SIZE = process.env["DESIRED_SIZE"] ? parseFloat(process.env["DESIRED_SIZE"]) : 0.01;
 const BUFFER = process.env["BUFFER"] ? parseFloat(process.env["BUFFER"]) : 0.01;
-const MIN_PRICE: number = process.env["MIN_PRICE"] ? parseFloat(process.env["MIN_PRICE"]) : 0.01;
+
 
 const ACCOUNT_TYPE = AccountType.trade;
 
@@ -30,7 +30,7 @@ export class KucoinHedger implements Hedger {
         const getTimestampRl = await API.rest.Others.getTimestamp();
         console.log(getTimestampRl.data);
 
-        let position = await positions(ACCOUNT_TYPE, 'SOL');
+        let position = await positions(ACCOUNT_TYPE, SYMBOL);
         console.log(position);
 
         let totalBuySideOrdersSize = await getTotalBuySideOrdersSize(SYMBOL_PAIR);
@@ -73,9 +73,6 @@ export class KucoinHedger implements Hedger {
             }
         }
 
-
-
-        // 
     };
 }
 
@@ -151,14 +148,14 @@ export async function transfer(
 
     let transfer = {
         clientOid: Date.now(),
-        currency: 'SOL',
+        currency: SYMBOL,
         from: 'main',
         to: 'trade',
         amount: '1',
     }
 
     console.log(transfer);
-    let res0 = await API.rest.User.Account.getAccountsList({ currency: "SOL" });
+    let res0 = await API.rest.User.Account.getAccountsList({ currency: SYMBOL });
     console.log(res0);
 
     let res = await API.rest.User.Account.innerTransfer(transfer);
@@ -186,9 +183,7 @@ export async function positions(type: string, currency: string) {
         throw new Error(res.msg);
     }
 
-    return (res.data?.filter(account => account.currency == "SOL" && account.type === 'trade'));
+    return (res.data?.filter(account => account.currency == SYMBOL && account.type === 'trade'));
 
 }
 
-
-// adjustSpotLongs(10).catch(console.error.bind(console));
