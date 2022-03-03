@@ -2,7 +2,7 @@ import fs from "fs";
 import {
     ConfigurationIfc,
     OptionsIfc
-  } from "./lib";
+  } from "./library";
 
 
 export class FileConfiguration implements ConfigurationIfc {

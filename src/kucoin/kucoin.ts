@@ -26,18 +26,13 @@ export interface HedgerIfc {
 
 export class KucoinHedger implements HedgerIfc {
     adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: OptionsIfc) => {
-        console.log(desiredSize);
         const getTimestampRl = await API.rest.Others.getTimestamp();
-        console.log(getTimestampRl.data);
 
         let position = await positions(ACCOUNT_TYPE, SYMBOL);
-        console.log(position);
-
         let totalBuySideOrdersSize = await getTotalBuySideOrdersSize(SYMBOL_PAIR);
-        console.log(totalBuySideOrdersSize);
 
         desiredSize = +desiredSize - totalBuySideOrdersSize;
-        console.log(desiredSize);
+        console.log(`|| totalBuySideOrdersSize:`, totalBuySideOrdersSize);
 
         let sizeAdjustmentNeeded = 0;
         if (position && position.length > 0) {
@@ -48,16 +43,16 @@ export class KucoinHedger implements HedgerIfc {
                 if (desiredSize - currentPosition.balance > options.minBuySize)
                     sizeAdjustmentNeeded = desiredSize - currentPosition.balance;
 
-                console.log(`Need To Buy More - (MIN ${options.minBuySize}) ${desiredSize - currentPosition.balance}`);
+                console.log(`\nNeed To Buy More - (MIN ${options.minBuySize}) ${desiredSize - currentPosition.balance}\n`);
             } else if (currentPosition.balance > desiredSize + BUFFER) {
 
                 if (Math.abs(desiredSize - currentPosition.balance) > options.minSellSize)
                     sizeAdjustmentNeeded = desiredSize - currentPosition.balance;
 
-                console.log(`Need To Sell More - (Min ${options.minSellSize}) ${desiredSize - currentPosition.balance}`);
+                console.log(`\nNeed To Sell More - (Min ${options.minSellSize}) ${desiredSize - currentPosition.balance}\n`);
 
             } else {
-                console.log("Position size is good");
+                console.log("\n** Position size is good **\n");
             }
 
         }
@@ -65,7 +60,7 @@ export class KucoinHedger implements HedgerIfc {
         if (sizeAdjustmentNeeded != 0) {
             sizeAdjustmentNeeded = parseFloat(sizeAdjustmentNeeded.toFixed(SIZE_DECIMALS));
             let insideMarket = await getInsideMarket(SYMBOL_PAIR);
-            console.log(insideMarket);
+            console.log(`insideMarket: ${insideMarket}`);
             if (insideMarket[0] && insideMarket[1]) {
                 sendOrder(
                     SYMBOL_PAIR,
