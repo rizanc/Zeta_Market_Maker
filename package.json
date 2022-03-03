@@ -15,7 +15,6 @@
   "scripts": {
     "mm": "ts-node ./src/zeta/index.ts",
     "ku": "ts-node ./src/kucoin/kucoin.ts",
-    "sr": "ts-node ./src/serum/index.ts",
     "testAll": "mocha -r ts-node/register src/**/*.spec.ts --timeout 10000",
     "test": "mocha -r ts-node/register src/**/util.spec.ts --timeout 10000",
     "build": "tsc -p .",
