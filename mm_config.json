@@ -7,9 +7,10 @@
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 1,
+                "deltaNeutralPosition": 1.5,
                 "minBuySize": 0.1,
-                "minSellSize": 500
+                "minSellSize": 1000,
+                "marginAccount": 0.00
             }
         },
         {
@@ -17,11 +18,11 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 4,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 0.75,
-                "size": 58.74,
-                "maxPrice": 0.81
+                "marketIndex": 6,
+                "crossMkt": true,
+                "fairMarketPriceSpread": 1,
+                "size": 1,
+                "maxPrice": 3.75
             }
         },
         {
@@ -29,11 +30,23 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 3,
+                "marketIndex": 30,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 0.75,
-                "size": 32.61,
+                "fairMarketPriceSpread": 0.805,
+                "size": 10,
                 "maxPrice": 6
+            }
+        },
+        {
+            "name": "fairBidStrategy",
+            "description": "Fair Bid Strategy",
+            "status": "active",
+            "options": {
+                "marketIndex": 28,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 0.85,
+                "size": 10,
+                "maxPrice": 20
             }
         },
         {
@@ -41,12 +54,13 @@
             "description": "Fair Ask Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 5,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 1.25,
-                "size": 9.35,
-                "minAvailableBalanceForOrder": 50,
-                "minPrice": 1.15
+                "marketIndex": 28,
+                "crossMkt": true,
+                "fairMarketPriceSpread": 1.0,
+                "size": 10,
+                "minAvailableBalanceForOrder": 75,
+                "maxPositionSize": 20,
+                "minPrice": 7.50
             }
         },
         {
@@ -54,12 +68,27 @@
             "description": "Fair Ask Strategy (HIT THE BID)",
             "status": "off",
             "options": {
-                "marketIndex": 4,
-                "crossMkt": true,
-                "fairMarketPriceSpread": 0.25,
+                "marketIndex": 29,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 0.851,
+                "size": 2,
+                "minAvailableBalanceForOrder": 400,
+                "maxPositionSize": 50,
+                "minPrice": 2.05
+            }
+        },
+        {
+            "name": "fairAskStrategy",
+            "description": "Fair Ask Strategy (HIT THE BID)",
+            "status": "off",
+            "options": {
+                "marketIndex": 30,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 0.1,
                 "size": 20,
-                "minAvailableBalanceForOrder": 15,
-                "minPrice": 2.18
+                "minAvailableBalanceForOrder": 500,
+                "maxPositionSize": 20,
+                "minPrice": 1.99
             }
         }
     ],
@@ -67,16 +96,16 @@
         {
             "name": "bidSniper",
             "description": "Will Snipe the Bid Cross Mkt Sell",
-            "status": "off",
+            "status": "active",
             "options": {
-                "marketIndex": 3,
+                "marketIndex": 30,
                 "side": 1,
-                "size": 5,
+                "size": 10,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 15,
-                "minPrice": 4.0012,
+                "minPrice": 1.75,
                 "minSleepSeconds": 20,
-                "maxPositionSize":35
+                "maxPositionSize": 52
             }
         },
         {
@@ -89,9 +118,9 @@
                 "size": 4,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 10,
-                "minPrice": 2.50,
+                "minPrice": 2.60,
                 "minSleepSeconds": 20,
-                "maxPositionSize":69
+                "maxPositionSize": 83
             }
         }
     ]
