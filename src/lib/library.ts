@@ -1,3 +1,19 @@
+import bunyan from 'bunyan';
+
+let _log = bunyan.createLogger({
+  name: 'zeta',
+  streams: [
+    {
+      level: 'info',
+      stream: process.stdout,
+    },
+    {
+      level: 'error',
+      path: '.\\logs\\errors.log'
+    }
+  ]
+});
+
 export interface HedgerIfc {
   adjustSpotLongs(desiredSize: number, options: OptionsIfc);
 }
@@ -18,5 +34,19 @@ export interface OptionsIfc {
   size?: number,
   minAvailableBalanceForOrder?: number,
   minPrice?: number,
-  maxPrice?: number
+  maxPrice?: number,
+  offlineSize?: number,
+  marginAccount?: number
+}
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function info(msg: any) {
+  _log.info(msg);
+}
+
+export function error(error: any) {
+  _log.error(error);
 }
