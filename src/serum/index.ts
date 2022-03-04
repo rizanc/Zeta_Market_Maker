@@ -21,39 +21,20 @@ const marketAddress = new PublicKey('9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzv
 const programAddress = new PublicKey("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
 
 async function main() {
+    const privateKey: string = process.env.PRIVATE_KEY!; // stored as an array string
+    const keypair = new Account(Uint8Array.from(JSON.parse(privateKey)));
 
     let market = await Market.load(connection, marketAddress, {}, programAddress);
 
-    // setInterval(async () => {
     // Fetching orderbooks
-    let bids = await market.loadBids(connection);
-    let asks = await market.loadAsks(connection);
+    let { bids, asks } = await fetchOrderBook(market);
+    let { sortedBids, sortedAsks } = sortBidsAsks(bids, asks);
 
-    // L2 orderbook data
-    let sortedAsks = asks.getL2(7).sort((a, b) => b[0] - a[0]);
-    for (let [price, size] of sortedAsks) {
-        console.log(price, size);
-    }
-
-    console.log("===============================");
-
-    let sortedBids = bids.getL2(7);
-    for (let [price, size] of sortedBids) {
-        console.log(price, size);
-    }
-    console.log('\n\n\n\n');
-
-    // }, 3000);
-
-    const privateKey: string = process.env.PRIVATE_KEY!; // stored as an array string
-    const keypair = new Account(Uint8Array.from(JSON.parse(privateKey)));
 
     // Placing orders
     let owner = keypair;
 
     let transactionType: TransactionType;
-
-
     let order: OrderParams<Account>;
     let payer;
 
@@ -98,8 +79,8 @@ async function main() {
                 owner,
                 payer,
                 side: "buy", // 'buy' or 'sell'
-                price: +sortedBids[0][0] + 0.02,
-                size: 4,
+                price: +sortedBids[3][0] + 0.02,
+                size: 5,
                 orderType: "postOnly", // 'limit', 'ioc', 'postOnly'
                 clientId: new BN(clientId)
             };
@@ -113,24 +94,13 @@ async function main() {
         console.log(order);
 
         let res = await market.placeOrder(connection, order);
-        console.log(res);
+        console.log(`Order Transaction: ${res}`);
     }
-
-    //DRQNx76FW3e5yf8fNJ9BYfG9rnQrqEBvfsFWDJCtq9KkUcYTN6QEyYeDnNCmKJyDrtHjHSBZ3Yi1mJ2RmFNSeDe
-    // Full orderbook data
-    // for (let order of asks) {
-    //     console.log(
-    //         order.orderId,
-    //         order.price,
-    //         order.size,
-    //         order.side, // 'buy' or 'sell'
-    //     );
-    // }
-
-
 
     setInterval(async () => {
 
+        let { bids, asks } = await fetchOrderBook(market);
+        displayOrderBook(bids, asks);
 
         for (let openOrders of await market.findOpenOrdersAccountsForOwner(
             connection,
@@ -139,12 +109,16 @@ async function main() {
             console.log(openOrders.address.toString());
             console.log(`Base  Free ${openOrders.baseTokenFree.toNumber()} \tTotal: ${openOrders.baseTokenTotal.toNumber()}`);
             console.log(`Quote Free ${openOrders.quoteTokenFree.toNumber()} \tTotal: ${openOrders.quoteTokenFree.toNumber()}`);
+
             console.log("\n\n\n\n");
 
             if (openOrders.baseTokenFree.toNumber() > 0 || openOrders.quoteTokenFree.toNumber() > 0) {
                 // spl-token accounts to which to send the proceeds from trades
                 let baseTokenAccount = new PublicKey(sol_account); // owner.publicKey;
                 let quoteTokenAccount = new PublicKey(usdc_account);
+
+
+
 
                 let res = await market.settleFunds(
                     connection,
@@ -160,22 +134,24 @@ async function main() {
 
         let myOrders = await market.loadOrdersForOwner(connection, owner.publicKey);
         console.log("myOrders");
+        myOrders.sort((a, b) => b.price - a.price);
+        
         for (let order of myOrders) {
 
             console.log(order.orderId.toString(), order.clientId.toString(), order.price, order.size, order.side);
 
         }
 
-        console.log("Fills")
-        for (let fill of await market.loadFills(connection)) {
-            console.log(fill.orderId, fill.price, fill.size, fill.side);
-        }
+        // console.log("Fills")
+        // for (let fill of await market.loadFills(connection)) {
+        //     console.log(fill.orderId, fill.price, fill.size, fill.side);
+        // }
 
         // console.log("Cancels")
-        for (let order of myOrders) {
-            let res = await market.cancelOrder(connection, owner, order);
-            console.log(res);
-        }
+        // for (let order of myOrders) {
+        //     let res = await market.cancelOrder(connection, owner, order);
+        //     console.log(res);
+        // }
 
     }, 15000);
 
@@ -196,4 +172,36 @@ async function main() {
 
 
 main();
+
+
+
+function sortBidsAsks(bids, asks): any {
+    let sortedBids = bids.getL2(7);
+    let sortedAsks = asks.getL2(7).sort((a, b) => b[0] - a[0]);
+
+    return { sortedBids, sortedAsks };
+}
+
+function displayOrderBook(bids, asks): void {
+
+    let { sortedBids, sortedAsks } = sortBidsAsks(bids, asks);
+
+    for (let [price, size] of sortedAsks) {
+        console.log(price, size);
+    }
+
+    console.log("===============================");
+
+    for (let [price, size] of sortedBids) {
+        console.log(price, size);
+    }
+    console.log('\n\n\n\n');
+
+}
+
+async function fetchOrderBook(market: Market) {
+    let bids = await market.loadBids(connection);
+    let asks = await market.loadAsks(connection);
+    return { bids, asks };
+}
 
