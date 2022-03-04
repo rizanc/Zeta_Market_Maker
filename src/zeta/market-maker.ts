@@ -28,6 +28,13 @@ import {
 const config: ConfigurationIfc = new FileConfiguration("mm_config.json");
 
 import { KucoinHedger } from "../kucoin/kucoin"
+
+let loopStatus = {
+  lastRun: new Date(),
+  runImmediate: true,
+  running: false
+}
+
 const kucoinHedger: HedgerIfc = new KucoinHedger();
 
 const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 25000;
@@ -53,7 +60,7 @@ async function runMarketMaker() {
   watchFile("mm_config.json", async (curr, prev) => {
 
     if (client) {
-      await actionsLoop();
+      loopStatus.runImmediate = true;
     }
 
     await sniperInitialize();
@@ -120,12 +127,25 @@ async function runMarketMaker() {
   utils.displayState();
 
   await sniperInitialize();
-  await actionsLoop();
+
+  loopStatus.lastRun = new Date();
 
   setInterval(async () => {
-    await actionsLoop();
-  }, SLEEP_MS);
+    let { runImmediate, running, lastRun } = loopStatus;
+    let _now = new Date();
+    if (!running) {
+      if (runImmediate || (_now.getTime() - lastRun.getTime() > SLEEP_MS)) {
+        running = loopStatus.running = true;
+        await actionsLoop();
 
+        runImmediate = false;
+        running = false;
+        lastRun = new Date();
+
+        loopStatus = { runImmediate, running, lastRun };
+      }
+    }
+  }, 200);
 }
 
 async function runSniperActions(snipers: any[], marginAccountState: types.MarginAccountState) {
@@ -520,8 +540,9 @@ async function shortPositionsDelta(
   console.log(options);
 
   let positions: types.Position[] = client.positions;
-  console.log(positions);
+  let reqDeltaNeutralPos = 0;
 
+  console.log(positions);
   if (positions.length > 0) {
 
     let p = positions
@@ -543,13 +564,13 @@ async function shortPositionsDelta(
     // Increase deltaNeutralPosition if bullish (>1), decrease if bearish (<1)
     reqDeltaNeutralPos = reqDeltaNeutralPos * options.deltaNeutralPosition;
 
-    await kucoinHedger.adjustSpotLongs(reqDeltaNeutralPos - options.offlineSize, options);
-
-    console.log("|| Offline Size", options.offlineSize);
-    console.log("|| Req. Trading Acct. Size)", reqDeltaNeutralPos - options.offlineSize);
-    console.log("|| Total Req. Delta Neutral Size", reqDeltaNeutralPos);
-
   }
+
+  await kucoinHedger.adjustSpotLongs(Math.min(reqDeltaNeutralPos - options.offlineSize, 0), options);
+
+  console.log("|| Offline Size", options.offlineSize);
+  console.log("|| Req. Trading Acct. Size)", reqDeltaNeutralPos - options.offlineSize);
+  console.log("|| Total Req. Delta Neutral Size", reqDeltaNeutralPos);
 }
 
 
