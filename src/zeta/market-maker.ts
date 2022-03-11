@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+import {runWebSocketServer} from "./ws";
+
 import { watchFile } from 'fs';
 
 import {
@@ -22,8 +24,11 @@ import {
   ConfigurationIfc,
   OptionsIfc,
   _getSOLBalance,
-  FileConfiguration
+  FileConfiguration,
+  logOrder
 } from "../lib";
+
+
 
 const config: ConfigurationIfc = new FileConfiguration("mm_config.json");
 
@@ -56,6 +61,7 @@ async function runMarketMaker() {
 
   console.log("Market Maker Starting");
 
+  runWebSocketServer();
 
   watchFile("mm_config.json", async (curr, prev) => {
 
@@ -249,13 +255,7 @@ async function bidSniper(
 
 
   let positionSize = 0;
-  if (client.positions && client.positions.length > 0) {
-
-    positionSize = client.positions
-      .filter(a => a.marketIndex === options.marketIndex)
-      .reduce((a, b) => a + b.position, 0);
-
-  }
+  positionSize = calcPositionSize(client, marketIndex);
 
   let availableBalance = toPrec(marginAccountState.availableBalanceInitial, 4);
 
@@ -321,6 +321,18 @@ async function bidSniper(
 
 }
 
+function calcPositionSize(client: Client, marketIndex: number) {
+  let positionSize = 0;
+  if (client.positions && client.positions.length > 0) {
+
+    positionSize = client.positions
+      .filter(a => a.marketIndex === marketIndex)
+      .reduce((a, b) => a + b.position, 0);
+
+  }
+  return positionSize;
+}
+
 async function fairAskStrategy(
   client: Client,
   marginAccountState: types.MarginAccountState,
@@ -335,7 +347,7 @@ async function fairAskStrategy(
     minAvailableBalanceForOrder: 180,
     maxPositionSize: 0,
     minPrice: 0.01,
-    shoulder: 0.05
+    shoulder: 0.005
   }
 
   let options = { ...defaultOptions, ..._options };
@@ -382,7 +394,7 @@ async function fairAskStrategy(
     let fairPriceToAsk = fairMarketPrice * fairMarketPriceSpread;
     fairPriceToAsk = parseFloat(fairPriceToAsk.toFixed(4));
 
-    fairPriceToAsk = toPrec(Math.max(fairPriceToAsk, minPrice), 3);
+    fairPriceToAsk = toPrec(Math.max(fairPriceToAsk, minPrice), 4);
 
     console.log(`|| fairMarketPrice: ${fairMarketPrice}`);
     console.log(`|| Price to ask: ${fairPriceToAsk}`);
@@ -402,18 +414,29 @@ async function fairAskStrategy(
 
     } else {
 
+      if (orderbook && orderbook.asks.length > 0) {
+        let filteredAsks = getFilteredAsks(
+          marketIndex, client.orders, orderbook);
+
+        if (filteredAsks.length > 0) {
+          let topAsk = filteredAsks[0].price;
+          wantedOrder.price =
+            Math.max(wantedOrder.price, topAsk - sigmoid(Math.random()) * 0.001);
+        }
+      }
+
       if (orderbook && orderbook.bids.length > 0) {
         let topBid = parseFloat(orderbook.bids[0].price.toFixed(4));
 
         if (crossMkt == false) {
-          wantedOrder.price = Math.max(topBid + 0.001, fairPriceToAsk);
+          wantedOrder.price = Math.max(topBid + 0.001, wantedOrder.price);
           console.log("BID", topBid, wantedOrder.price);
         } else {
           wantedOrder.price = Math.max(topBid, fairPriceToAsk);
         }
-        wantedOrder.price = toPrec(wantedOrder.price, 4);
       }
 
+      wantedOrder.price = toPrec(wantedOrder.price, 4);
       wantedOrders.push(wantedOrder);
 
 
@@ -440,7 +463,9 @@ export async function fairBidStrategy(
     fairMarketPriceSpread: 1.25,
     size: 1,
     maxPrice: 1.01,
-    shoulder: 0.05
+    shoulder: 0.002,
+    closeOnly: true,
+    maxPositionSize: 0
   };
 
   let options = { ...defaultOptions, ..._options };
@@ -463,17 +488,28 @@ export async function fairBidStrategy(
 
   let orders: types.Order[] = client.orders;
   let positions: types.Position[] = client.positions;
+  let positionSize = 0;
 
   if (positions && positions.length > 0) {
     positions = positions.filter(p => {
       return p.marketIndex == marketIndex && p.position < 0;
     })
+    positionSize = calcPositionSize(client, marketIndex);
   }
 
-  if (positions && positions.length == 0) {
-    console.log("No short positions");
-    return;
+  if (options.closeOnly) {
+    if (positionSize >= 0) {
+      console.log("No short positions");
+      return;
+    }
+  } else {
+    if (positionSize + size > options.maxPositionSize) {
+      console.log("OPEN Position too big");
+      return;
+    }
   }
+
+
 
   try {
 
@@ -491,23 +527,41 @@ export async function fairBidStrategy(
       orderType: crossMkt ? types.OrderType.FILLORKILL : types.OrderType.POSTONLY
     }
 
+    if (orderbook && orderbook.bids.length > 0) {
+      let filteredBids =
+        getFilteredBids(marketIndex, orders, orderbook);
+
+      if (filteredBids.length > 0) {
+        let topBid = parseFloat(filteredBids[0].price.toFixed(4));
+        if (wantedOrder.price > topBid)
+          wantedOrder.price = toPrec(topBid + sigmoid(Math.random()) * 0.001, 4);
+      }
+    }
+
+
     // Looking at the top ask to figure out 
     // if we need to adjust our bid a bit lower
     // to avoid taker order.
     if (orderbook && orderbook.asks.length > 0) {
       let topAsk = parseFloat(orderbook.asks[0].price.toFixed(4))
       if (!crossMkt) {
-        wantedOrder.price = Math.min(topAsk - 0.001, fairPriceToBid);
-        console.log("BID", topAsk, wantedOrder.price);
+        wantedOrder.price = Math.min(topAsk - 0.001, wantedOrder.price);
+        console.log(`topAsk ${topAsk}, wantedOrder.price ${wantedOrder.price}`);
       } else {
         wantedOrder.price = Math.min(topAsk, fairPriceToBid);
+        if (wantedOrder.price > maxPrice) {
+          console.log(`Price to HIGH for cross market (FOK) order.
+           ${wantedOrder.price} MAX=${maxPrice}`);
+          return;
+        }
       }
     }
 
-    wantedOrder.price = toPrec(Math.min(wantedOrder.price, maxPrice), 3);
+    wantedOrder.price = toPrec(Math.min(wantedOrder.price, maxPrice), 4);
     wantedOrders.push(wantedOrder);
 
-    await convergeBidOrders(marketIndex, orders, wantedOrders, client, shoulder);
+    await convergeBidOrders(
+      marketIndex, orders, wantedOrders, client, shoulder);
 
   } catch (e) {
     console.log(e);
@@ -542,7 +596,10 @@ async function shortPositionsDelta(
   let positions: types.Position[] = client.positions;
   let reqDeltaNeutralPos = 0;
 
+  console.log("\n\nPositions");
   console.log(positions);
+  console.log("==============\n\n");
+
   if (positions.length > 0) {
 
     let p = positions
@@ -574,7 +631,7 @@ async function shortPositionsDelta(
 }
 
 
-async function getMarketData(marketIndex: number) {
+export async function getMarketData(marketIndex: number) {
   let marketAddress = Exchange.markets.markets[marketIndex].address;
   await Exchange.markets.markets[marketIndex].updateOrderbook();
 
@@ -696,43 +753,114 @@ function printConvergedOrders(wantedOrders: any[], cancelOrders: any[], newOrder
   console.log(newOrders);
 }
 
-
 async function placeOrders(cancelOrders: any[], newOrders: any[], client: Client) {
 
-
   while (newOrders.length > 0 || cancelOrders.length > 0) {
+    let _log;
 
-    if (newOrders.length > 0) {
-      if (cancelOrders.length == 0) {
-        let order = newOrders.shift();
-        await client.placeOrderV2(order.market, order.price * 1e6, order.size * 1e3, order.side, order.orderType);
-      } else {
+    try {
+
+      _log = {};
+
+      if (newOrders.length > 0) {
+        if (cancelOrders.length == 0) {
+
+          let order = newOrders.shift();
+          _log._type = "Place";
+          _log._order = { newOrder: order };
+          _log._trx = await client.placeOrderV2(
+            order.market,
+            order.price * 1e6,
+            order.size * 1e3,
+            order.side,
+            order.orderType,
+            Date.now());
+
+        } else {
+
+          let cancelOrder = cancelOrders.shift();
+          let newOrder = newOrders.shift();
+
+          _log._type = "Cancel and Place";
+          _log._order = { cancelOrder, newOrder };
+          _log._trx = await client.cancelAndPlaceOrderV2(
+            cancelOrder.market,
+            cancelOrder.orderId,
+            cancelOrder.side,
+            newOrder.price * 1e6,
+            newOrder.size * 1e3,
+            newOrder.side,
+            newOrder.orderType,
+            Date.now()
+          );
+
+        }
+      } else if (cancelOrders.length > 0) {
+
         let cancelOrder = cancelOrders.shift();
-        let newOrder = newOrders.shift();
-        await client.cancelAndPlaceOrderV2(
+
+        _log._type = "Cancel";
+        _log._order = { cancelOrder };
+
+
+        _log._trx = await client.cancelOrder(
           cancelOrder.market,
           cancelOrder.orderId,
-          cancelOrder.side,
-          newOrder.price * 1e6,
-          newOrder.size * 1e3,
-          newOrder.side,
-          newOrder.orderType
-        );
-      }
-    } else
-      if (cancelOrders.length > 0) {
-        let cancelOrder = cancelOrders.shift();
-        await client.cancelOrder(cancelOrder.market, cancelOrder.orderId, cancelOrder.side);
+          cancelOrder.side);
 
       }
+
+      if (_log._trx)
+        logOrder(_log);
+
+    } catch (err) {
+
+      _log._err = err;
+      logOrder(_log);
+    }
+
   }
-
 }
 
 
 function toPrec(x: number, precision: number): number {
   return parseFloat(x.toFixed(precision));
 }
+
+
+export function getFilteredBids(
+  marketIndex: number,
+  orders: any[],
+  orderbook: types.DepthOrderbook) {
+
+  let filteredBids = orderbook.bids.filter((bid) => {
+    return orders.findIndex((order) => {
+      return order.price == bid.price &&
+        order.marketIndex == marketIndex &&
+        order.side == types.Side.BID;
+    }) >= 0 ? false : true;
+  });
+  return filteredBids;
+}
+
+export function getFilteredAsks(
+  marketIndex: number,
+  orders: any[],
+  orderbook: types.DepthOrderbook) {
+
+  let filteredAsks = orderbook.asks.filter((ask) => {
+    return orders.findIndex((order) => {
+      return order.price == ask.price &&
+        order.marketIndex == marketIndex &&
+        order.side == types.Side.ASK;
+    }) >= 0 ? false : true;
+  });
+  return filteredAsks;
+}
+
+function sigmoid(z) {
+  return 1 / (1 + Math.exp(-z));
+};
 
 
 export default {

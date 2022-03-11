@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
-    "types": ["mocha"],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "types": [
+      "mocha"
+    ],
     "module": "commonjs",
     "target": "es2019",
     "declaration": true,
@@ -14,5 +19,5 @@
   "typedocOptions": {
     "entryPoints": ["src/index.ts"],
     "out": "docs"
-  }
+  } 
 }

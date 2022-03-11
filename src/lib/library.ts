@@ -14,6 +14,16 @@ let _log = bunyan.createLogger({
   ]
 });
 
+let _orderLog = bunyan.createLogger({
+  name: 'zeta',
+  streams: [
+    {
+      level: 'info',
+      path: '.\\logs\\orders.log'
+    }
+  ]
+});
+
 export interface HedgerIfc {
   adjustSpotLongs(desiredSize: number, options: OptionsIfc);
 }
@@ -49,4 +59,8 @@ export function info(msg: any) {
 
 export function error(error: any) {
   _log.error(error);
+}
+
+export function logOrder(msg: any) {
+  _orderLog.info(msg);
 }

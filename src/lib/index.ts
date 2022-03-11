@@ -4,7 +4,8 @@ export {
     OptionsIfc,
     sleep,
     error, 
-    info
+    info,
+    logOrder
 } from "./library";
 
 export {

@@ -18,11 +18,13 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 6,
-                "crossMkt": true,
+                "marketIndex": 4,
+                "crossMkt": false,
                 "fairMarketPriceSpread": 1,
-                "size": 1,
-                "maxPrice": 3.75
+                "size": 55,
+                "maxPrice": 2.70,
+                "closeOnly": true,
+                "maxPositionSize": 30
             }
         },
         {
@@ -30,11 +32,13 @@
             "description": "Fair Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 30,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 0.9,
-                "size": 1,
-                "maxPrice": 0.25
+                "marketIndex": 5,
+                "crossMkt": true,
+                "fairMarketPriceSpread": 1.5,
+                "size": 30,
+                "maxPrice": 0.4,
+                "closeOnly": true,
+                "maxPositionSize": 150
             }
         },
         {
@@ -46,7 +50,9 @@
                 "crossMkt": false,
                 "fairMarketPriceSpread": 0.85,
                 "size": 10,
-                "maxPrice": 20
+                "maxPrice": 20,
+                "closeOnly": true,
+                "maxPositionSize": 2
             }
         },
         {
@@ -54,13 +60,13 @@
             "description": "Fair Ask Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 28,
-                "crossMkt": true,
-                "fairMarketPriceSpread": 1.0,
-                "size": 10,
+                "marketIndex": 29,
+                "crossMkt": false,
+                "fairMarketPriceSpread": 1.1 ,
+                "size": 15,
                 "minAvailableBalanceForOrder": 75,
-                "maxPositionSize": 20,
-                "minPrice": 7.50
+                "maxPositionSize": 50,
+                "minPrice": 2.50
             }
         },
         {
@@ -68,13 +74,13 @@
             "description": "Fair Ask Strategy (HIT THE BID)",
             "status": "off",
             "options": {
-                "marketIndex": 29,
+                "marketIndex": 28,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 0.851,
-                "size": 2,
-                "minAvailableBalanceForOrder": 400,
-                "maxPositionSize": 50,
-                "minPrice": 2.05
+                "fairMarketPriceSpread": 0.95,
+                "size": 20,
+                "minAvailableBalanceForOrder": 75,
+                "maxPositionSize": 20,
+                "minPrice": 4.00
             }
         },
         {
@@ -115,12 +121,12 @@
             "options": {
                 "marketIndex": 4,
                 "side": 1,
-                "size": 4,
+                "size": 1,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 10,
-                "minPrice": 2.60,
+                "minPrice": 2.90,
                 "minSleepSeconds": 20,
-                "maxPositionSize": 83
+                "maxPositionSize": 10
             }
         }
     ]
