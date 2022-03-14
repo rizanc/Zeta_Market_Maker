@@ -53,6 +53,7 @@ export async function shortPositionsDelta(
 
     if (positions.length > 0) {
 
+        // Keep only the short positions
         let p = positions
             .filter(p => p.position < 0)
 
@@ -61,26 +62,33 @@ export async function shortPositionsDelta(
             let fairMarketPrice: number, orderbook: types.DepthOrderbook, greeks: any;
             ({ fairMarketPrice, orderbook, greeks } = await getMarketData(p.marketIndex));
 
+            console.log("Greeks", greeks);
             let market = Exchange.markets.getMarket(p.market);
-            let deltaNeutral = strat_util.toPrec(greeks["delta"] * p.position, 4);
+            let deltaNeutral = strat_util.toPrec(greeks["callDelta"] * p.position, 4);
+
             return { marketIndex: p.marketIndex, exp: market.expiryIndex, kind: market.kind, strike: market.strike, fairMarketPrice, deltaNeutral, averageCost: p.costOfTrades / p.position, greeks, position: p };
 
         }))
 
-        let reqDeltaNeutralPos = Math.abs(zetaPositions.reduce((acc, cur) => acc + cur.deltaNeutral, 0))
+        reqDeltaNeutralPos = Math.abs(zetaPositions.reduce((acc, cur) => acc + cur.deltaNeutral, 0))
 
         // Increase deltaNeutralPosition if bullish (>1), decrease if bearish (<1)
         reqDeltaNeutralPos = reqDeltaNeutralPos * options.deltaNeutralPosition;
 
     }
 
-    if (hedger) {
-        await hedger.adjustSpotLongs(Math.min(reqDeltaNeutralPos - options.offlineSize, 0), options);
+    console.log("\n\n|| Required Delta Neutral Position ", reqDeltaNeutralPos);
+    console.log("|| Offline Size", options.offlineSize);
+
+    if (options.offlineSize > reqDeltaNeutralPos) {
+        console.log("|| Hedge Covered with Offline size");
     }
 
-    console.log("|| Offline Size", options.offlineSize);
-    console.log("|| Req. Trading Acct. Size)", reqDeltaNeutralPos - options.offlineSize);
-    console.log("|| Total Req. Delta Neutral Size", reqDeltaNeutralPos);
+    if (hedger) {
+        await hedger.adjustSpotLongs(Math.max(reqDeltaNeutralPos - options.offlineSize, 0), options);
+    }
+
+    console.log("|| Req. Spot Trading Acct. Size)", reqDeltaNeutralPos - options.offlineSize);
 }
 
 export async function callBidStrategy(
@@ -437,7 +445,7 @@ async function getMarketData(marketIndex: number) {
         Exchange.greeks.productGreeks[greeksIndex].vega
     ).toNumber(), 4);
 
-    return { marketAddress, fairMarketPrice, orderbook, greeks: { delta: callDelta, sigma, vega } };
+    return { marketAddress, fairMarketPrice, orderbook, greeks: { delta: 1 - callDelta, callDelta: callDelta, sigma, vega } };
 }
 
 function getFilteredBids(
