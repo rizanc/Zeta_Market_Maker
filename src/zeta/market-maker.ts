@@ -26,9 +26,9 @@ import {
 
 import {
   shortPositionsDelta,
-  fairBidStrategy,
-  fairAskStrategy,
-  bidSniper
+  callBidStrategy,
+  callOfferStrategy,
+  callBidSniper
 } from "./strategies";
 
 import { KucoinHedger } from "../kucoin/kucoin";
@@ -47,10 +47,10 @@ const NETWORK_URL = process.env["network_url"]!;
 const PROGRAM_ID = new PublicKey(process.env["program_id"]);
 
 const RUNNABLE_ACTIONS = {
-  "shortPositionsDelta": shortPositionsDelta,
-  "fairBidStrategy": fairBidStrategy,
-  "fairAskStrategy": fairAskStrategy,
-  "bidSniper": bidSniper
+  "shortPositionsDelta":shortPositionsDelta,
+  "callBidStrategy":callBidStrategy,
+  "callOfferStrategy":callOfferStrategy,
+  "callBidSniper":callBidSniper
 };
 
 let client;

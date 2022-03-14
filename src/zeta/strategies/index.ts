@@ -17,7 +17,6 @@ import {
     logOrder
 } from "../../lib";
 
-import { KucoinHedger } from "../../kucoin/kucoin";
 import strat_util from "./strat_util";
 
 const PUB_KEY = process.env["pub_key"]!;
@@ -84,7 +83,7 @@ export async function shortPositionsDelta(
     console.log("|| Total Req. Delta Neutral Size", reqDeltaNeutralPos);
 }
 
-export async function fairBidStrategy(
+export async function callBidStrategy(
     client: Client,
     marginAccountState: types.MarginAccountState,
     _options: any) {
@@ -203,7 +202,7 @@ export async function fairBidStrategy(
     }
 }
 
-export async function fairAskStrategy(
+export async function callOfferStrategy(
     client: Client,
     marginAccountState: types.MarginAccountState,
     _options: any
@@ -321,7 +320,7 @@ export async function fairAskStrategy(
     }
 }
 
-export async function bidSniper(
+export async function callBidSniper(
     client: Client,
     marginAccountState: any,
     _options: any

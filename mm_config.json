@@ -14,8 +14,8 @@
             }
         },
         {
-            "name": "fairBidStrategy",
-            "description": "Fair Bid Strategy",
+            "name": "callBidStrategy",
+            "description": "Call Bid Strategy",
             "status": "off",
             "options": {
                 "marketIndex": 4,
@@ -28,8 +28,8 @@
             }
         },
         {
-            "name": "fairBidStrategy",
-            "description": "Fair Bid Strategy",
+            "name": "callBidStrategy",
+            "description": "Call Bid Strategy",
             "status": "off",
             "options": {
                 "marketIndex": 5,
@@ -42,8 +42,8 @@
             }
         },
         {
-            "name": "fairBidStrategy",
-            "description": "Fair Bid Strategy",
+            "name": "callBidStrategy",
+            "description": "Call Bid Strategy",
             "status": "off",
             "options": {
                 "marketIndex": 28,
@@ -56,22 +56,22 @@
             }
         },
         {
-            "name": "fairAskStrategy",
-            "description": "Fair Ask Strategy",
-            "status": "off",
+            "name": "callOfferStrategy",
+            "description": "Call Offer Strategy",
+            "status": "active",
             "options": {
-                "marketIndex": 29,
+                "marketIndex": 28,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 1.1 ,
-                "size": 15,
+                "fairMarketPriceSpread": 0.2 ,
+                "size": 30,
                 "minAvailableBalanceForOrder": 75,
-                "maxPositionSize": 50,
-                "minPrice": 2.50
+                "maxPositionSize": 70,
+                "minPrice": 1.80
             }
         },
         {
-            "name": "fairAskStrategy",
-            "description": "Fair Ask Strategy (HIT THE BID)",
+            "name": "callOfferStrategy",
+            "description": "Call Offer Strategy",
             "status": "off",
             "options": {
                 "marketIndex": 28,
@@ -84,8 +84,8 @@
             }
         },
         {
-            "name": "fairAskStrategy",
-            "description": "Fair Ask Strategy (HIT THE BID)",
+            "name": "callOfferStrategy",
+            "description": "Call Offer Strategy",
             "status": "off",
             "options": {
                 "marketIndex": 30,
@@ -100,7 +100,7 @@
     ],
     "snipers": [
         {
-            "name": "bidSniper",
+            "name": "callBidSniper",
             "description": "Will Snipe the Bid Cross Mkt Sell",
             "status": "off",
             "options": {
@@ -115,7 +115,7 @@
             }
         },
         {
-            "name": "bidSniper",
+            "name": "callBidSniper",
             "description": "Will Snipe the Bid Cross Mkt Sell",
             "status": "off",
             "options": {
