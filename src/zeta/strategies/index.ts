@@ -100,7 +100,7 @@ export async function callBidStrategy(
     };
 
     let options = { ...defaultOptions, ..._options };
-    console.log("============ fairBidStrategy ================");
+    console.log("============ callBidStrategy ================");
     console.log(options);
 
     let {
@@ -220,7 +220,7 @@ export async function callOfferStrategy(
     }
 
     let options = { ...defaultOptions, ..._options };
-    console.log("============ fairAskStrategy ================");
+    console.log("============ callOfferStrategy ================");
     console.log(options);
 
 
@@ -337,7 +337,7 @@ export async function callBidSniper(
     }
 
     let options = { ...defaultOptions, ..._options };
-    console.log("============ bidSniper ================");
+    console.log("============ callBidSniper ================");
     console.log(options);
 
     let {
