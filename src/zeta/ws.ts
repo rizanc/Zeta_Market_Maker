@@ -1,9 +1,29 @@
+require("dotenv").config();
+
+import {
+    Wallet,
+    Client,
+    Exchange,
+    Network,
+    utils,
+    types,
+    events
+
+} from "@zetamarkets/sdk";
+
+import { PublicKey, Connection, Keypair } from "@solana/web3.js";
+
 const WS_SERVER_PORT = 8000;
+const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 25000;
+const NETWORK_URL = process.env["network_url"]!;
+const PROGRAM_ID = new PublicKey(process.env["program_id"]);
 
 import * as websocket from 'websocket';
 import * as http from 'http';
 
-export const runWebSocketServer = () => {
+export const runWebSocketServer = async () => {
+
+    await connectToZeta();
 
     const webSocketServer = websocket.server;
     const server = http.createServer();
@@ -40,15 +60,11 @@ export const runWebSocketServer = () => {
 
         clients[userID] = connection;
         console.log('connected: ' + userID + ' in ' + Object.getOwnPropertyNames(clients))
-        sendMessage("1 Hello there!!");
-        sendMessage("2 Hello there!!");
-        sendMessage("3 Hello there!!");
-        sendMessage("4 Hello there!!");
-        sendMessage("5 Hello there!!");
-        sendMessage("6 Hello there!!");
     });
 
 }
+
+let zetaClient;
 
 const clients: any = {};
 
@@ -63,4 +79,62 @@ const sendMessage = (json: any) => {
     });
 }
 
+const connectToZeta = async () => {
 
+    const userKey = Keypair.fromSecretKey(
+        new Uint8Array(JSON.parse(Buffer.from(process.env.private_key!).toString()))
+    );
+
+    const wallet = new Wallet(userKey);
+
+    const connection: Connection = new Connection(NETWORK_URL, "confirmed");
+
+    await Exchange.load(
+        PROGRAM_ID,
+        Network.MAINNET,
+        connection,
+        utils.defaultCommitment(),
+        new types.DummyWallet(), 100,
+        async (event: events.EventType, data: any) => {
+
+            switch (event) {
+                case events.EventType.ORDERBOOK:
+                    let marketIndex = data.marketIndex;
+                    let markets = Exchange.markets;
+                    let market = markets.markets[marketIndex];
+                    let orderbook = market.orderbook;
+                    await zetaClient.updateState();
+
+                    console.log("======= ORDERBOOK ==========")
+                    console.log("Market Index ", marketIndex);
+                    console.log(orderbook);
+                    sendMessage(JSON.stringify(orderbook));
+
+                    console.log(".=================")
+
+                default:
+                    return;
+            }
+        }
+
+    );
+
+    Exchange.markets.subscribeMarket(28);
+    Exchange.markets.pollInterval = 5;
+
+    zetaClient = await Client.load(
+        connection,
+        wallet,
+        utils.defaultCommitment()
+
+    );
+
+    // zetaClient.pollInterval = 10;
+
+
+    await zetaClient.updateState();
+    utils.displayState();
+}
+
+
+runWebSocketServer();
