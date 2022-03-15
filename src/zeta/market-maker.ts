@@ -92,7 +92,7 @@ async function runMarketMaker() {
           let markets = Exchange.markets;
           let market = markets.markets[marketIndex];
           let orderbook = market.orderbook;
-          console.log("=================")
+          console.log("======= ORDERBOOK ==========")
           console.log(orderbook);
 
           const configuration: ConfigurationIfc = new FileConfiguration("mm_config.json");
