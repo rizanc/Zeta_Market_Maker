@@ -90,7 +90,7 @@ async function runMarketMaker() {
         case events.EventType.ORDERBOOK:
           let marketIndex = data.marketIndex;
           let markets = Exchange.markets;
-          let market = markets.markets[4];
+          let market = markets.markets[marketIndex];
           let orderbook = market.orderbook;
           console.log("=================")
           console.log(orderbook);
