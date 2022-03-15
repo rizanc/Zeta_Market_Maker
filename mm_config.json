@@ -7,7 +7,7 @@
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 1.5,
+                "deltaNeutralPosition": 1.0,
                 "minBuySize": 0.1,
                 "minSellSize": 500,
                 "marginAccount": 0.00
@@ -58,7 +58,7 @@
         {
             "name": "callOfferStrategy",
             "description": "Call Offer Strategy",
-            "status": "active",
+            "status": "off",
             "options": {
                 "marketIndex": 28,
                 "crossMkt": false,
@@ -119,14 +119,14 @@
             "description": "Will Snipe the Bid Cross Mkt Sell",
             "status": "off",
             "options": {
-                "marketIndex": 4,
+                "marketIndex": 28,
                 "side": 1,
                 "size": 1,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 10,
-                "minPrice": 2.90,
+                "minPrice": 1.00,
                 "minSleepSeconds": 20,
-                "maxPositionSize": 10
+                "maxPositionSize": 63
             }
         }
     ]
