@@ -1,7 +1,5 @@
 require("dotenv").config();
 
-import { runWebSocketServer } from "./ws";
-
 import { watchFile } from 'fs';
 
 import {
@@ -58,8 +56,6 @@ let client;
 async function runMarketMaker() {
 
   console.log("Market Maker Starting");
-
-  runWebSocketServer();
 
   watchFile("mm_config.json", async (curr, prev) => {
 
