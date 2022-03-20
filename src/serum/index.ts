@@ -92,9 +92,14 @@ async function main() {
 
     if (order) {
         console.log(order);
+        console.log(`sol_account ${sol_account} \nusdc_account ${usdc_account}`);
+        try {
+            let res = await market.placeOrder(connection, order);
+            console.log(`Order Transaction: ${res}`);
+        } catch (err) {
+            console.log(err);
+        }
 
-        let res = await market.placeOrder(connection, order);
-        console.log(`Order Transaction: ${res}`);
     }
 
     setInterval(async () => {
@@ -135,7 +140,7 @@ async function main() {
         let myOrders = await market.loadOrdersForOwner(connection, owner.publicKey);
         console.log("myOrders");
         myOrders.sort((a, b) => b.price - a.price);
-        
+
         for (let order of myOrders) {
 
             console.log(order.orderId.toString(), order.clientId.toString(), order.price, order.size, order.side);
