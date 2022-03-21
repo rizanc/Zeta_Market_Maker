@@ -372,8 +372,6 @@ export async function callBidSniper(
 
 
     try {
-        //TODO: Make Sure it doesn't run if an other process is already running.
-        //processingAskOrders[marketIndex] = true;
 
         let wantedOrders = [];
         console.log(`Available Balance (Initial): ${availableBalance} ${minAvailableBalanceForOrder}`);
@@ -413,7 +411,15 @@ export async function callBidSniper(
 
         }
 
-        await convergeAskOrders(marketIndex, orders, wantedOrders, client, .01);
+        await convergeAskOrders(
+            marketIndex,
+            orders,
+            wantedOrders,
+            client,
+            .01,
+            // Do not cancel existing orders on a new fill or kill order.
+            crossMkt ? false : true
+        );
 
     } catch (e) {
         console.log(e);
@@ -421,6 +427,7 @@ export async function callBidSniper(
     } finally {
         //processingAskOrders[marketIndex] = false;
     }
+    console.log("============ callBidSniper - END ================");
 
 }
 
@@ -523,7 +530,13 @@ async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wa
 
 }
 
-async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wantedAskOrders: any[], client: Client, shoulder: number = 0) {
+async function convergeAskOrders(
+    marketIndex: number,
+    _orders: types.Order[],
+    wantedAskOrders: any[],
+    client: Client,
+    shoulder: number = 0,
+    cancelExistingOrders: boolean = true) {
 
     let cancelOrders = [];
     let newOrders = [];
@@ -531,7 +544,7 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
     let askOrders = _orders.filter(order => order.marketIndex == marketIndex && order.side == 1);
 
     console.log("askOrders", askOrders);
-    
+
     if (askOrders.length == 0 && wantedAskOrders.length > 0) {
         newOrders = wantedAskOrders;
     } else if (askOrders.length > 0 && wantedAskOrders.length > 0) {
@@ -562,6 +575,8 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
         cancelOrders = askOrders;
     }
 
+    if (!cancelExistingOrders)
+        cancelOrders = [];
 
     strat_util.printConvergedOrders(wantedAskOrders, cancelOrders, newOrders);
 
