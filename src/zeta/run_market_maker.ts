@@ -3,14 +3,9 @@ require("dotenv").config();
 import marketMaker from './market-maker';
 import { sleep, info, error } from '../lib';
 
-let t = {
-    solBalance: 0,
-    name: "Costin"
-}
-info("\n\n\nStarting zeta");
+info("\n\n\nStarting Zeta Market Maker");
 
 const cluster = require('cluster')
-const os = require('os')
 
 if (cluster.isMaster) {
     cluster.fork();

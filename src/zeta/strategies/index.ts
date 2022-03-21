@@ -530,6 +530,8 @@ async function convergeAskOrders(marketIndex: number, _orders: types.Order[], wa
 
     let askOrders = _orders.filter(order => order.marketIndex == marketIndex && order.side == 1);
 
+    console.log("askOrders", askOrders);
+    
     if (askOrders.length == 0 && wantedAskOrders.length > 0) {
         newOrders = wantedAskOrders;
     } else if (askOrders.length > 0 && wantedAskOrders.length > 0) {
@@ -647,6 +649,7 @@ function calcPositionSize(client: Client, marketIndex: number) {
             .reduce((a, b) => a + b.position, 0);
 
     }
+    console.log("positionSize", positionSize);
     return positionSize;
 }
 

@@ -29,6 +29,7 @@ export interface HedgerIfc {
 }
 
 export interface ConfigurationIfc {
+  loadHedger(): string[];
   loadActions(): string[];
   loadSnipers(): string[];
   loadOptionsForAction(actionName: String, defaultOptions: Object): OptionsIfc

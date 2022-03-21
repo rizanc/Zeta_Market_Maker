@@ -15,13 +15,14 @@
     "websocket": "^1.0.34"
   },
   "scripts": {
-    "mm": "ts-node ./src/zeta/index.ts",
+    "mm": "ts-node ./src/zeta/run_market_maker.ts",
+    "he": "ts-node ./src/zeta/run_hedger.ts",
     "ws": "ts-node ./src/zeta/ws.ts",
     "ku": "ts-node ./src/kucoin/kucoin.ts",
     "testAll": "mocha -r ts-node/register src/**/*.spec.ts --timeout 10000",
     "test": "mocha -r ts-node/register src/**/ws.spec.ts --timeout 10000",
     "build": "tsc -p .",
-    "postbuild": "copy .env .\\dist\\_.env & copy mm_config.json .\\dist\\_mm_config.json & copy package.json .\\dist\\package.json"
+    "postbuild": "copy .env .\\dist\\_.env & copy mm_config.json .\\dist\\_mm_config.json & copy package.json .\\dist\\package.json & copy .\\scripts\\* .\\dist\\*"
   },
   "engines": {
     "node": "16.x"

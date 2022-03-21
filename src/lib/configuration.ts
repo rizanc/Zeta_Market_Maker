@@ -22,6 +22,14 @@ export class FileConfiguration implements ConfigurationIfc {
 
     }
 
+    public loadHedger(): string[] {
+
+        let config = JSON.parse(fs.readFileSync(this.filename, "utf8",));
+        let hedger = config.hedger;
+        return hedger;
+
+    }
+
     public loadSnipers(): string[] {
 
         let config = JSON.parse(fs.readFileSync(this.filename, "utf8",));

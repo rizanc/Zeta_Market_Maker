@@ -51,7 +51,7 @@ const RUNNABLE_ACTIONS = {
   "callBidSniper": callBidSniper
 };
 
-let client;
+let client: Client;
 
 async function runMarketMaker() {
 
@@ -150,6 +150,10 @@ async function runMarketMaker() {
 
 async function runSniperActions(snipers: any[], marginAccountState: types.MarginAccountState) {
   let sniperActions = [];
+
+  if (snipers.length > 0)
+    await client.updateState();
+
   for (let i = 0; i < snipers.length; i++) {
     sniperActions.push(RUNNABLE_ACTIONS[snipers[i].name](
       client, marginAccountState, snipers[i].options));
@@ -192,11 +196,9 @@ async function actionsLoop() {
 
   console.log(`${new Date().toLocaleTimeString('en-US')} Actions Starting`);
 
-  let oraclePrice: number = Exchange.oracle.getPrice("SOL/USD").price;
-  console.log(`Oracle Price: ${oraclePrice}`);
-
   await client.updateState();
 
+  let oraclePrice: number = Exchange.oracle.getPrice("SOL/USD").price;
   oraclePrice = Exchange.oracle.getPrice("SOL/USD").price;
 
   let marginAccountState = Exchange.riskCalculator.getMarginAccountState(

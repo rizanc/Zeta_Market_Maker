@@ -1,100 +1,46 @@
 {
     "description": "Default Confguration File",
     "version": 1.0,
-    "actions": [
+    "hedger": [
         {
             "name": "shortPositionsDelta",
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 1.5,
+                "deltaNeutralPosition": 1.0,
                 "minBuySize": 0.1,
-                "minSellSize": 500,
+                "minSellSize": 1.005,
                 "marginAccount": 0.00
             }
-        },
+        }
+    ],
+    "actions": [
         {
             "name": "callBidStrategy",
             "description": "Call Bid Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 4,
+                "marketIndex": 6,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 1,
-                "size": 55,
-                "maxPrice": 2.70,
+                "size": 1,
+                "maxPrice": 2.00,
                 "closeOnly": true,
                 "maxPositionSize": 30
             }
         },
         {
-            "name": "callBidStrategy",
-            "description": "Call Bid Strategy",
-            "status": "off",
-            "options": {
-                "marketIndex": 5,
-                "crossMkt": true,
-                "fairMarketPriceSpread": 1.5,
-                "size": 30,
-                "maxPrice": 0.4,
-                "closeOnly": true,
-                "maxPositionSize": 150
-            }
-        },
-        {
-            "name": "callBidStrategy",
-            "description": "Call Bid Strategy",
-            "status": "off",
-            "options": {
-                "marketIndex": 28,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 0.85,
-                "size": 10,
-                "maxPrice": 20,
-                "closeOnly": true,
-                "maxPositionSize": 2
-            }
-        },
-        {
-            "name": "callOfferStrategy",
-            "description": "Call Offer Strategy",
-            "status": "active",
-            "options": {
-                "marketIndex": 28,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 0.2 ,
-                "size": 30,
-                "minAvailableBalanceForOrder": 75,
-                "maxPositionSize": 70,
-                "minPrice": 1.80
-            }
-        },
-        {
             "name": "callOfferStrategy",
             "description": "Call Offer Strategy",
             "status": "off",
             "options": {
-                "marketIndex": 28,
+                "marketIndex": 6,
                 "crossMkt": false,
-                "fairMarketPriceSpread": 0.95,
-                "size": 20,
-                "minAvailableBalanceForOrder": 75,
-                "maxPositionSize": 20,
-                "minPrice": 4.00
-            }
-        },
-        {
-            "name": "callOfferStrategy",
-            "description": "Call Offer Strategy",
-            "status": "off",
-            "options": {
-                "marketIndex": 30,
-                "crossMkt": false,
-                "fairMarketPriceSpread": 0.1,
-                "size": 20,
-                "minAvailableBalanceForOrder": 500,
-                "maxPositionSize": 20,
-                "minPrice": 1.99
+                "fairMarketPriceSpread": 1.1,
+                "size": 1.3,
+                "minAvailableBalanceForOrder": 10,
+                "maxPositionSize": 2,
+                "minPrice": 0
             }
         }
     ],
@@ -104,14 +50,14 @@
             "description": "Will Snipe the Bid Cross Mkt Sell",
             "status": "off",
             "options": {
-                "marketIndex": 30,
+                "marketIndex": 29,
                 "side": 1,
-                "size": 5,
+                "size": 10,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 15,
-                "minPrice": 1.75,
+                "minPrice": 1.26,
                 "minSleepSeconds": 20,
-                "maxPositionSize": 52
+                "maxPositionSize": 15
             }
         },
         {
@@ -119,14 +65,14 @@
             "description": "Will Snipe the Bid Cross Mkt Sell",
             "status": "off",
             "options": {
-                "marketIndex": 4,
+                "marketIndex": 6,
                 "side": 1,
-                "size": 1,
+                "size": 10,
                 "crossMkt": true,
-                "minAvailableBalanceForOrder": 10,
-                "minPrice": 2.90,
+                "minAvailableBalanceForOrder": 35,
+                "minPrice": 1.44,
                 "minSleepSeconds": 20,
-                "maxPositionSize": 10
+                "maxPositionSize": 25
             }
         }
     ]
