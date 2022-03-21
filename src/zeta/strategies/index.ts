@@ -100,9 +100,9 @@ export async function callBidStrategy(
         marketIndex: -1,
         crossMkt: false,
         fairMarketPriceSpread: 1.25,
+        shoulder:0.005,
         size: 1,
         maxPrice: 1.01,
-        shoulder: 0.002,
         closeOnly: true,
         maxPositionSize: 0
     };
@@ -220,11 +220,11 @@ export async function callOfferStrategy(
         marketIndex: -1,
         crossMkt: false,
         fairMarketPriceSpread: 1.25,
+        shoulder: 0.005,
         size: 1,
         minAvailableBalanceForOrder: 180,
         maxPositionSize: 0,
         minPrice: 0.01,
-        shoulder: 0.005
     }
 
     let options = { ...defaultOptions, ..._options };
@@ -236,10 +236,10 @@ export async function callOfferStrategy(
         marketIndex,
         crossMkt,
         fairMarketPriceSpread,
+        shoulder,
         size,
         minAvailableBalanceForOrder,
         minPrice,
-        shoulder,
         maxPositionSize } = options;
 
 
@@ -341,7 +341,7 @@ export async function callBidSniper(
         minPrice: 0.01,
         minSleepSeconds: 20,
         maxPositionSize: 20,
-        crossMkt: false,
+        crossMkt: false
     }
 
     let options = { ...defaultOptions, ..._options };

@@ -7,9 +7,9 @@
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 1.0,
+                "deltaNeutralPosition": 0.55,
                 "minBuySize": 0.1,
-                "minSellSize": 1.005,
+                "minSellSize": 100.05,
                 "marginAccount": 0.00
             }
         }
@@ -23,8 +23,9 @@
                 "marketIndex": 6,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 1,
-                "size": 1,
-                "maxPrice": 2.00,
+                "shoulder": 0.005,
+                "size": 37,
+                "maxPrice": 1.40,
                 "closeOnly": true,
                 "maxPositionSize": 30
             }
@@ -37,9 +38,10 @@
                 "marketIndex": 6,
                 "crossMkt": false,
                 "fairMarketPriceSpread": 1.1,
+                "shoulder": 0.05,
                 "size": 1.3,
                 "minAvailableBalanceForOrder": 10,
-                "maxPositionSize": 2,
+                "maxPositionSize": 50,
                 "minPrice": 0
             }
         }
@@ -67,12 +69,12 @@
             "options": {
                 "marketIndex": 6,
                 "side": 1,
-                "size": 10,
+                "size": 1,
                 "crossMkt": true,
-                "minAvailableBalanceForOrder": 35,
-                "minPrice": 1.44,
+                "minAvailableBalanceForOrder": 10,
+                "minPrice": 1.17,
                 "minSleepSeconds": 20,
-                "maxPositionSize": 25
+                "maxPositionSize": 36
             }
         }
     ]
