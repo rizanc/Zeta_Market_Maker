@@ -116,7 +116,7 @@ async function sendOrder(
     limitPrice = minPrice ? Math.min(minPrice, limitPrice) : limitPrice;
 
     let order = {
-        type: "limit",
+        type: "market",
         symbol: symbolPair,
         side: sizeAdjustment > 0 ? "buy" : "sell",
         price: limitPrice,
