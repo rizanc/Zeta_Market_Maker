@@ -38,6 +38,14 @@ export class FileConfiguration implements ConfigurationIfc {
 
     }
 
+    public loadFutures(): string[] {
+
+        let config = JSON.parse(fs.readFileSync(this.filename, "utf8",));
+        let futures = config.futures;
+        return futures;
+
+    }
+
     public loadOptionsForAction(actionName: String, defaultOptions: Object): OptionsIfc {
         let result = {
             success: true,

@@ -22,6 +22,8 @@ import strat_util from "./strat_util";
 const PUB_KEY = process.env["pub_key"]!;
 const LEDGER_PUB_KEY = process.env["ledger_pub_key"]!;
 
+let runningJobs = new strat_util.RunningJobs();
+
 export async function shortPositionsDelta(
     client: Client,
     marginAccountState: types.MarginAccountState,
@@ -100,7 +102,7 @@ export async function callBidStrategy(
         marketIndex: -1,
         crossMkt: false,
         fairMarketPriceSpread: 1.25,
-        shoulder:0.005,
+        shoulder: 0.005,
         size: 1,
         maxPrice: 1.01,
         closeOnly: true,
@@ -431,6 +433,303 @@ export async function callBidSniper(
 
 }
 
+export async function futuresBid(
+    client: Client,
+    marginAccountState: types.MarginAccountState,
+    _options: any) {
+
+    let defaultOptions = {
+        marketIndex: -1,
+        crossMkt: false,
+        fairMarketPriceSpread: 1.25,
+        shoulder: 0.005,
+        size: 1,
+        maxPrice: 1.01,
+        closeOnly: true,
+        maxPositionSize: 0
+    };
+
+    let options = { ...defaultOptions, ..._options };
+    console.log("============ futuresBidStrategy ================");
+    // console.log(options);
+    let jobName = "futuresBid";
+
+    if (runningJobs.isStarted(jobName, options.marketIndex)) {
+        console.log("futuresBidStrategy already running");
+        return;
+    } else {
+        runningJobs.start(jobName, options.marketIndex);
+    }
+
+    try {
+        let {
+            marketIndex,
+            size,
+            crossMkt,
+            fairMarketPriceSpread,
+            maxPrice,
+            shoulder } = options;
+
+        let marketAddress: PublicKey,
+            fairMarketPrice: number,
+            orderbook: types.DepthOrderbook;
+
+        ({ marketAddress, fairMarketPrice, orderbook } = await getMarketData(marketIndex));
+
+        let orders: types.Order[] = client.orders;
+        let positions: types.Position[] = client.positions;
+        let positionSize = 0;
+
+        if (positions && positions.length > 0) {
+            positions = positions.filter(p => {
+                return p.marketIndex == marketIndex && p.position < 0;
+            })
+            positionSize = calcPositionSize(client, marketIndex);
+        }
+
+        if (options.closeOnly) {
+            if (positionSize >= 0) {
+                console.log("No short positions");
+                return;
+            }
+        } else {
+            if (positionSize + size > options.maxPositionSize) {
+                console.log("OPEN Position too big");
+
+                // Cancel ALL Existing Orders;
+                await convergeBidOrders(
+                    marketIndex, orders, [], client, shoulder);
+
+                return;
+            }
+        }
+
+
+        let wantedOrders = [];
+        let fairPriceToBid = strat_util.toPrec(fairMarketPrice * (fairMarketPriceSpread), 4);
+
+        console.log(`Fair market price: ${fairMarketPrice}`);
+        console.log(`Bid Price: ${fairPriceToBid}`);
+
+        let wantedOrder = {
+            market: Exchange.markets.markets[marketIndex].address,
+            price: strat_util.toPrec(fairPriceToBid, 3),
+            size: size,
+            side: types.Side.BID,
+            orderType: crossMkt ? types.OrderType.FILLORKILL : types.OrderType.POSTONLY
+        }
+
+        let nonFilteredAsks = [];
+        let topAsk: number, topBid: number;
+
+        if (orderbook && orderbook.asks.length > 0) {
+            nonFilteredAsks = getNonFiltredAsks(orderbook);
+
+            if (nonFilteredAsks.length > 0) {
+                topAsk = parseFloat(nonFilteredAsks[0].price.toFixed(4));
+            }
+        }
+
+        if (orderbook && orderbook.bids.length > 0) {
+            let filteredBids =
+                getFilteredBids(marketIndex, orders, orderbook);
+
+            if (filteredBids.length > 0) {
+                topBid = parseFloat(filteredBids[0].price.toFixed(4));
+
+            }
+        }
+
+        if (topBid) {
+            if (topAsk) {
+                let diff = topAsk - topBid;
+                let spread = (diff / 3) * strat_util.sigmoid(Math.random());
+                wantedOrder.price = topBid + spread; // diff; // spread;
+                console.log(topBid, topAsk, spread, topBid + spread);
+
+                //wantedOrder.price = strat_util.toPrec(topBid + strat_util.sigmoid(Math.random()) * 0.051, 4);
+            } else {
+                if (wantedOrder.price > topBid)
+                    wantedOrder.price = strat_util.toPrec(topBid + strat_util.sigmoid(Math.random()) * 0.05, 4);
+            }
+        }
+
+        // Looking at the top ask to figure out 
+        // if we need to adjust our bid a bit lower
+        // to avoid taker order.
+        if (orderbook && orderbook.asks.length > 0) {
+            let topAsk = parseFloat(orderbook.asks[0].price.toFixed(4))
+            if (!crossMkt) {
+                wantedOrder.price = Math.min(topAsk - 0.001, wantedOrder.price);
+                console.log(`topAsk ${topAsk}, wantedOrder.price ${wantedOrder.price}`);
+            } else {
+                wantedOrder.price = Math.min(topAsk, fairPriceToBid);
+                if (wantedOrder.price > maxPrice) {
+                    console.log(`Price to HIGH for cross market (FOK) order.
+             ${wantedOrder.price} MAX=${maxPrice}`);
+                    return;
+                }
+            }
+        }
+
+        wantedOrder.price = strat_util.toPrec(Math.min(wantedOrder.price, maxPrice), 4);
+        wantedOrders.push(wantedOrder);
+
+        console.log(wantedOrders);
+        await convergeBidOrders(
+            marketIndex, orders, wantedOrders, client, shoulder);
+
+    } catch (e) {
+        console.log(e);
+
+    } finally {
+        if (runningJobs.isStarted(jobName, options.marketIndex))
+            runningJobs.done(jobName, options.marketIndex);
+    }
+}
+
+export async function futuresOffer(
+    client: Client,
+    marginAccountState: types.MarginAccountState,
+    _options: any) {
+
+    let defaultOptions = {
+        marketIndex: -1,
+        crossMkt: false,
+        fairMarketPriceSpread: 1.25,
+        shoulder: 0.005,
+        size: 1,
+        minPrice: 1.01,
+        closeOnly: false,
+        maxPositionSize: 0
+    };
+
+    let options = { ...defaultOptions, ..._options };
+    console.log("============ futuresOfferStrategy ================");
+    // console.log(options);
+    let jobName = "futuresOffer";
+
+    if (runningJobs.isStarted(jobName, options.marketIndex)) {
+        console.log("futuresOfferStrategy already running");
+        return;
+    } else {
+        runningJobs.start(jobName, options.marketIndex);
+    }
+
+    try {
+        let {
+            marketIndex,
+            size,
+            crossMkt,
+            fairMarketPriceSpread,
+            minPrice,
+            shoulder } = options;
+
+        let marketAddress: PublicKey,
+            fairMarketPrice: number,
+            orderbook: types.DepthOrderbook;
+
+        ({ marketAddress, fairMarketPrice, orderbook } = await getMarketData(marketIndex));
+
+        let orders: types.Order[] = client.orders;
+        let positionSize = 0;
+
+        positionSize = calcPositionSize(client, marketIndex);
+        // console.log(`positionSize: ${positionSize}`);
+
+        if (positionSize - size < options.minPositionSize) {
+            console.log("OPEN Position too low");
+
+            // Cancel ALL Existing Orders;
+            await convergeAskOrders(
+                marketIndex, orders, [], client, shoulder);
+
+            return;
+        }
+
+
+        let wantedOrders = [];
+        let fairPriceToAsk = strat_util.toPrec(fairMarketPrice * (fairMarketPriceSpread), 4);
+
+        console.log(`Fair market price: ${fairMarketPrice}`);
+        console.log(`Ask Price: ${fairPriceToAsk}`);
+
+        let wantedOrder = {
+            market: Exchange.markets.markets[marketIndex].address,
+            price: strat_util.toPrec(fairPriceToAsk, 3),
+            size: size,
+            side: types.Side.ASK,
+            orderType: crossMkt ? types.OrderType.FILLORKILL : types.OrderType.POSTONLY
+        }
+
+        let filteredAsks = [];
+        let topAsk: number, topBid: number;
+
+        if (orderbook && orderbook.asks.length > 0) {
+            filteredAsks = getFilteredAsks(marketIndex, orders, orderbook);
+
+            if (filteredAsks.length > 0) {
+                topAsk = parseFloat(filteredAsks[0].price.toFixed(4));
+            }
+        }
+
+        if (orderbook && orderbook.bids.length > 0) {
+            let nonFilteredBids =
+                getNonFiltredBids(orderbook);
+
+            if (nonFilteredBids.length > 0) {
+                topBid = parseFloat(nonFilteredBids[0].price.toFixed(4));
+
+            }
+        }
+
+        if (topAsk) {
+            if (topBid) {
+                let diff = topAsk - topBid;
+                let spread = (diff / 3) * strat_util.sigmoid(Math.random());
+                wantedOrder.price = topAsk - spread; // diff; // spread;
+                console.log(topAsk, topBid, spread, topAsk - spread);
+            } else {
+                if (wantedOrder.price < topAsk)
+                    wantedOrder.price = strat_util.toPrec(topAsk - strat_util.sigmoid(Math.random()) * 0.05, 4);
+            }
+
+        }
+
+        // Looking at the top ask to figure out 
+        // if we need to adjust our bid a bit lower
+        // to avoid taker order.
+        if (orderbook && orderbook.bids.length > 0) {
+            let topBid = parseFloat(orderbook.bids[0].price.toFixed(4))
+            if (!crossMkt) {
+                wantedOrder.price = Math.max(topBid + 0.001, wantedOrder.price);
+                console.log(`topBid ${topBid}, wantedOrder.price ${wantedOrder.price}`);
+            } else {
+                wantedOrder.price = Math.max(topBid, fairPriceToAsk);
+                if (wantedOrder.price < minPrice) {
+                    console.log(`Price to LOW for cross market (FOK) order.
+             ${wantedOrder.price} MAX=${minPrice}`);
+                    return;
+                }
+            }
+        }
+
+        wantedOrder.price = strat_util.toPrec(Math.max(wantedOrder.price, minPrice), 4);
+        wantedOrders.push(wantedOrder);
+
+        console.log(wantedOrders);
+        await convergeAskOrders(
+            marketIndex, orders, wantedOrders, client, shoulder);
+
+    } catch (e) {
+        console.log(e);
+
+    } finally {
+        if (runningJobs.isStarted(jobName, options.marketIndex))
+            runningJobs.done(jobName, options.marketIndex);
+    }
+}
+
 async function getMarketData(marketIndex: number) {
     let marketAddress = Exchange.markets.markets[marketIndex].address;
     await Exchange.markets.markets[marketIndex].updateOrderbook();
@@ -485,8 +784,26 @@ function getFilteredAsks(
     return filteredAsks;
 }
 
+export function getNonFiltredBids(
+    orderbook: types.DepthOrderbook) {
 
-async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wantedBidOrders: any[], client: Client, shoulder: number = 0) {
+    if (orderbook && orderbook.bids)
+        return orderbook.bids;
+    else
+        return null;
+}
+
+export function getNonFiltredAsks(
+    orderbook: types.DepthOrderbook) {
+
+    if (orderbook && orderbook.asks)
+        return orderbook.asks;
+    else
+        return null;
+}
+
+
+async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wantedBidOrders: any[], client: Client, shoulder: number = 0, doNotSend: boolean = false) {
 
     let cancelOrders = [];
     let newOrders = [];
@@ -526,7 +843,10 @@ async function convergeBidOrders(marketIndex: number, _orders: types.Order[], wa
     }
 
     strat_util.printConvergedOrders(wantedBidOrders, cancelOrders, newOrders);
-    await placeOrders(cancelOrders, newOrders, client);
+
+    if (!doNotSend) {
+        await placeOrders(cancelOrders, newOrders, client);
+    }
 
 }
 

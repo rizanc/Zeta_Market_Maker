@@ -32,6 +32,7 @@ export interface ConfigurationIfc {
   loadHedger(): string[];
   loadActions(): string[];
   loadSnipers(): string[];
+  loadFutures(): string[];
   loadOptionsForAction(actionName: String, defaultOptions: Object): OptionsIfc
 }
 

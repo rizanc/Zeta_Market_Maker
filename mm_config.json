@@ -7,7 +7,7 @@
             "description": "Short Position Delta Display",
             "status": "active",
             "options": {
-                "deltaNeutralPosition": 0.55,
+                "deltaNeutralPosition": 0,
                 "minBuySize": 0.1,
                 "minSellSize": 100.05,
                 "marginAccount": 0.00
@@ -53,8 +53,8 @@
             "status": "off",
             "options": {
                 "marketIndex": 29,
-                "side": 1,
                 "size": 10,
+                "fairMarketPriceSpread": 1,
                 "crossMkt": true,
                 "minAvailableBalanceForOrder": 15,
                 "minPrice": 1.26,
@@ -75,6 +75,42 @@
                 "minPrice": 1.17,
                 "minSleepSeconds": 20,
                 "maxPositionSize": 36
+            }
+        }
+    ],
+    "futures":[
+        {
+            "name": "futuresBid",
+            "description": "Bids on the Futures market",
+            "status": "active",
+            "options": {
+                "marketIndex": 22,
+                "fairMarketPriceSpread": 1.00,
+                "size": 0.12,
+                "shoulder":0.10,
+                "closeOnly": false,
+                "_crossMkt": false,
+                "_minAvailableBalanceForOrder": 15,
+                "minSleepSeconds": 10,
+                "maxPositionSize": 16,
+                "maxPrice": 93.15
+            }
+        },
+        {
+            "name": "futuresOffer",
+            "description": "Asks on the Futures market",
+            "status": "active",
+            "options": {
+                "marketIndex": 22,
+                "fairMarketPriceSpread": 0.999,
+                "size": 0.12,
+                "shoulder":0.10,
+                "closeOnly": false,
+                "_crossMkt": false,
+                "_minAvailableBalanceForOrder": 15,
+                "minSleepSeconds": 10,
+                "minPositionSize": 3,
+                "minPrice": 91.45
             }
         }
     ]

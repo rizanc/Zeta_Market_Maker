@@ -26,7 +26,9 @@ import {
   shortPositionsDelta,
   callBidStrategy,
   callOfferStrategy,
-  callBidSniper
+  callBidSniper,
+  futuresBid,
+  futuresOffer
 } from "./strategies";
 
 import { KucoinHedger } from "../kucoin/kucoin";
@@ -48,7 +50,9 @@ const RUNNABLE_ACTIONS = {
   "shortPositionsDelta": shortPositionsDelta,
   "callBidStrategy": callBidStrategy,
   "callOfferStrategy": callOfferStrategy,
-  "callBidSniper": callBidSniper
+  "callBidSniper": callBidSniper,
+  "futuresBid": futuresBid,
+  "futuresOffer": futuresOffer
 };
 
 let client: Client;
@@ -63,7 +67,10 @@ async function runMarketMaker() {
       loopStatus.runImmediate = true;
     }
 
-    await sniperInitialize();
+    await Promise.all([
+      sniperInitialize(),
+      futuresInitialize()
+    ]);
 
     console.log(`Config file Changed ${prev.mtime} on ${curr.mtime}`);
 
@@ -91,20 +98,36 @@ async function runMarketMaker() {
           let marketIndex = data.marketIndex;
           let markets = Exchange.markets;
           let market = markets.markets[marketIndex];
+
           let orderbook = market.orderbook;
           console.log("=================")
           console.log(orderbook);
 
           const configuration: ConfigurationIfc = new FileConfiguration("mm_config.json");
-          let snipers: any[] = configuration.loadSnipers()
-            .filter((a: any) => a["status"] === "active" && a.options.marketIndex === marketIndex);
+          if (market.kind == "future") {
 
-          let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
-            client.marginAccount
-          );
+            let futures: any[] = configuration.loadFutures()
+              .filter((a: any) => a["status"] === "active" && a.options.marketIndex === marketIndex);
 
-          await runSniperActions(snipers, marginAccountState);
-          console.log(".=================")
+            let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+              client.marginAccount
+            );
+
+            await runFuturesActions(futures, marginAccountState);
+            console.log(".=================")
+          } else if (market.kind == "call") {
+
+            let snipers: any[] = configuration.loadSnipers()
+              .filter((a: any) => a["status"] === "active" && a.options.marketIndex === marketIndex);
+
+            let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+              client.marginAccount
+            );
+
+            await runSniperActions(snipers, marginAccountState);
+            console.log(".=================")
+
+          }
 
         default:
           return;
@@ -122,11 +145,14 @@ async function runMarketMaker() {
 
   client.pollInterval = 10;
 
-
   await client.updateState();
   utils.displayState();
 
-  await sniperInitialize();
+  await Promise.all([
+    sniperInitialize(),
+    futuresInitialize()
+
+  ]);
 
   loopStatus.lastRun = new Date();
 
@@ -163,9 +189,26 @@ async function runSniperActions(snipers: any[], marginAccountState: types.Margin
   );
 }
 
+async function runFuturesActions(futures: any[], marginAccountState: types.MarginAccountState) {
+  let futuresActions = [];
+
+  if (futures.length > 0)
+    await client.updateState();
+
+  for (let i = 0; i < futures.length; i++) {
+    futuresActions.push(RUNNABLE_ACTIONS[futures[i].name](
+      client, marginAccountState, futures[i].options));
+  }
+
+  await Promise.all(
+    futuresActions
+  );
+}
+
 async function sniperInitialize() {
 
   let snipers: any[] = config.loadSnipers()
+  await client.updateState();
 
   let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
     client.marginAccount
@@ -184,6 +227,36 @@ async function sniperInitialize() {
         break;
       default:
         Exchange.markets.unsubscribeMarket(snipers[i].options.marketIndex);
+        break;
+
+    }
+
+  }
+
+}
+
+async function futuresInitialize() {
+
+  let futures: any[] = config.loadFutures()
+  await client.updateState();
+
+  let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
+    client.marginAccount
+  );
+
+  await runFuturesActions(futures.filter(a => a.status == "active"), marginAccountState);
+
+  for (let i = 0; i < futures.length; i++) {
+
+    switch (futures[i].status) {
+      case "active":
+        // Subscribe to a market index.
+        Exchange.markets.unsubscribeMarket(futures[i].options.marketIndex);
+        Exchange.markets.subscribeMarket(futures[i].options.marketIndex);
+        Exchange.markets.pollInterval = futures[i].options.minSleepSeconds;
+        break;
+      default:
+        Exchange.markets.unsubscribeMarket(futures[i].options.marketIndex);
         break;
 
     }
