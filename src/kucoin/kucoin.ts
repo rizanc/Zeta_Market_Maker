@@ -5,9 +5,11 @@ import config from './secret.config';
 
 import { AccountType } from './lib/types';
 import { OptionsIfc } from "../lib";
+import { writeFileSync } from 'fs';
 
 API.init(config);
 
+const DATA_DIR = process.env["DATA_DIR"];
 const SYMBOL = process.env["SYMBOL"];
 const SYMBOL_PAIR = process.env["SYMBOL_PAIR"];
 const PRICE_DECIMALS: number = process.env["PRICE_DECIMALS"] ? parseInt(process.env["PRICE_DECIMALS"]) : 2;
@@ -28,6 +30,7 @@ export class KucoinHedger implements HedgerIfc {
     adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: OptionsIfc) => {
         const getTimestampRl = await API.rest.Others.getTimestamp();
 
+        await equity();
         let position = await positions(ACCOUNT_TYPE, SYMBOL);
         let totalBuySideOrdersSize = await getTotalBuySideOrdersSize(SYMBOL_PAIR);
 
@@ -182,3 +185,38 @@ export async function positions(type: string, currency: string) {
 
 }
 
+export async function equity() {
+
+    try {
+        const USDT = await API.rest.User.Account.getAccountsList({ type: 'trade', currency: 'USDT' });
+        if (USDT.msg) {
+            throw new Error(USDT.msg);
+        }
+
+        const SOL = await API.rest.User.Account.getAccountsList({ type: 'trade', currency: 'SOL' });
+        if (SOL.msg) {
+            throw new Error(SOL.msg);
+        }
+        const SOL_LEVEL_2 = await API.rest.Market.OrderBook.getLevel2_20('SOL-USDT');
+        if (SOL_LEVEL_2.msg) {
+            throw new Error(SOL_LEVEL_2.msg);
+        }
+
+        if (SOL_LEVEL_2.data.bids.length > 0) {
+            let price = SOL_LEVEL_2?.data?.bids[0][0];
+
+            let sol_equity = parseFloat(SOL.data[0].balance) * price;
+            let usdt_equity = parseFloat(USDT.data[0].balance);
+            let total = sol_equity + usdt_equity;
+            writeFileSync(DATA_DIR +"\\KUCOIN.dat", total.toString());
+        } else {
+            throw new Error("No Bids");
+        }
+
+    } catch (err) {
+
+        //TODO: Log error
+        console.log(err);
+    }
+
+}

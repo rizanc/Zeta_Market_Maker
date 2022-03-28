@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-import { watchFile } from 'fs';
+import { watchFile, writeFileSync } from 'fs';
 
 import {
     Wallet,
@@ -36,6 +36,7 @@ let loopStatus = {
     running: false
 }
 
+const DATA_DIR = process.env["DATA_DIR"];
 const SLEEP_MS: number = parseInt(process.env.SLEEP_MS) || 25000;
 const NETWORK_URL = process.env["network_url"]!;
 const PROGRAM_ID = new PublicKey(process.env["program_id"]);
@@ -119,6 +120,9 @@ async function actionsLoop() {
     let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
         client.marginAccount
     );
+
+    let equity = marginAccountState.balance + marginAccountState.unrealizedPnl;
+    writeFileSync(DATA_DIR+"\\ZETA.dat", equity.toString());
 
     let actions: any[] = config.loadHedger().filter((a: any) => a.status === "active");
 
