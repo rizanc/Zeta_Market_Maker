@@ -116,6 +116,7 @@ async function actionsLoop() {
 
     let oraclePrice: number = Exchange.oracle.getPrice("SOL/USD").price;
     oraclePrice = Exchange.oracle.getPrice("SOL/USD").price;
+    writeFileSync(DATA_DIR+"\\SOLUSD.dat", oraclePrice.toString());
 
     let marginAccountState = Exchange.riskCalculator.getMarginAccountState(
         client.marginAccount
