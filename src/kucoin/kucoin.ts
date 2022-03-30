@@ -7,6 +7,8 @@ import { AccountType } from './lib/types';
 import { OptionsIfc } from "../lib";
 import { writeFileSync } from 'fs';
 
+import { HedgerIfc } from '../lib';
+
 API.init(config);
 
 const DATA_DIR = process.env["DATA_DIR"];
@@ -20,11 +22,6 @@ const BUFFER = process.env["BUFFER"] ? parseFloat(process.env["BUFFER"]) : 0.01;
 
 
 const ACCOUNT_TYPE = AccountType.trade;
-
-export interface HedgerIfc {
-    adjustSpotLongs(desiredSize: number, options: OptionsIfc)
-}
-
 
 export class KucoinHedger implements HedgerIfc {
     adjustSpotLongs = async (desiredSize: number = DESIRED_SIZE, options: OptionsIfc) => {
